@@ -11,10 +11,61 @@ execute:
   freeze: true
 ---
 
-## Overview
+## Getting Started
 
-xxx
+Install and launch R packages
 
-### Getting Started
+The code chunk below uses p_load of pacman package to check if tidyverse package have been installed.
 
-xxx
+```{r}
+pacman::p_load(sf, tidyverse, here)
+```
+
+## Importing the Data
+
+Importing polygon feature data in shapefile format
+
+```{r}
+mpsz = st_read(dsn = "data/geospatial/MasterPlan2014SubzoneBoundaryWebSHP", 
+               layer = "MP14_SUBZONE_WEB_PL")
+```
+Importing polyline feature data in shapefile format
+
+```{r}
+cyclingpath = st_read(dsn = "data/geospatial/CyclingPath_Apr2025", 
+                         layer = "CyclingPathGazette")
+```
+Importing GIS data in kml format
+```{r}
+preschool = st_read("data/geospatial/PreSchoolsLocation.kml")
+```
+## Data Exploration
+st_geometry() displays basic geospatial information.
+```{r}
+st_geometry(mpsz)
+```
+glimpse() shows the associated attribute information in the dataset.
+```{r}
+glimpse(mpsz)
+```
+head() shows complete information of a feature object.
+```{r}
+head(mpsz, n=5)  
+```
+## Plotting Geospatial Data
+Below is a multi-plot of all attributes.
+```{r}
+plot(mpsz)
+```
+Only the geometry can be plotted as well.
+```{r}
+plot(st_geometry(mpsz))
+```
+
+```{r}
+plot(mpsz["PLN_AREA_N"])
+```
+
+```{r}
+head(mpsz, n=5)  
+```
