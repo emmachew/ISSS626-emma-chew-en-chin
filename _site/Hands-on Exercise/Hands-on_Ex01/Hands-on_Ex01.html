@@ -194,6 +194,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#geoprocessing-with-sf-packages" id="toc-geoprocessing-with-sf-packages" class="nav-link" data-scroll-target="#geoprocessing-with-sf-packages">Geoprocessing with sf packages</a>
   <ul class="collapse">
   <li><a href="#use-case-1-land-acquisition-analysis" id="toc-use-case-1-land-acquisition-analysis" class="nav-link" data-scroll-target="#use-case-1-land-acquisition-analysis">Use case 1: Land acquisition analysis</a></li>
+  <li><a href="#use-case-2-determine-the-number-of-pre-schools-by-planning-subzone" id="toc-use-case-2-determine-the-number-of-pre-schools-by-planning-subzone" class="nav-link" data-scroll-target="#use-case-2-determine-the-number-of-pre-schools-by-planning-subzone">Use case 2: Determine the number of pre-schools by planning subzone</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -727,23 +728,159 @@ $ geometry                                     &lt;POINT [m]&gt; POINT (41972.5 
 <pre><code>3561648 [m^2]</code></pre>
 </div>
 </div>
+<p>Create a plot showing the buffer within a selected planning subzone (e.g.&nbsp;Tampines West). First, project the buffer_cycling data to EPSG:3414 format.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb36"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a>mpsz <span class="ot">&lt;-</span> <span class="fu">st_set_crs</span>(mpsz, <span class="dv">3414</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb36"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a>buffer_cycling <span class="ot">&lt;-</span> <span class="fu">st_set_crs</span>(buffer_cycling, <span class="dv">3414</span>)</span>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a><span class="fu">st_crs</span>(buffer_cycling)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Coordinate Reference System:
+  User input: EPSG:3414 
+  wkt:
+PROJCRS["SVY21 / Singapore TM",
+    BASEGEOGCRS["SVY21",
+        DATUM["SVY21",
+            ELLIPSOID["WGS 84",6378137,298.257223563,
+                LENGTHUNIT["metre",1]]],
+        PRIMEM["Greenwich",0,
+            ANGLEUNIT["degree",0.0174532925199433]],
+        ID["EPSG",4757]],
+    CONVERSION["Singapore Transverse Mercator",
+        METHOD["Transverse Mercator",
+            ID["EPSG",9807]],
+        PARAMETER["Latitude of natural origin",1.36666666666667,
+            ANGLEUNIT["degree",0.0174532925199433],
+            ID["EPSG",8801]],
+        PARAMETER["Longitude of natural origin",103.833333333333,
+            ANGLEUNIT["degree",0.0174532925199433],
+            ID["EPSG",8802]],
+        PARAMETER["Scale factor at natural origin",1,
+            SCALEUNIT["unity",1],
+            ID["EPSG",8805]],
+        PARAMETER["False easting",28001.642,
+            LENGTHUNIT["metre",1],
+            ID["EPSG",8806]],
+        PARAMETER["False northing",38744.572,
+            LENGTHUNIT["metre",1],
+            ID["EPSG",8807]]],
+    CS[Cartesian,2],
+        AXIS["northing (N)",north,
+            ORDER[1],
+            LENGTHUNIT["metre",1]],
+        AXIS["easting (E)",east,
+            ORDER[2],
+            LENGTHUNIT["metre",1]],
+    USAGE[
+        SCOPE["Cadastre, engineering survey, topographic mapping."],
+        AREA["Singapore - onshore and offshore."],
+        BBOX[1.13,103.59,1.47,104.07]],
+    ID["EPSG",3414]]</code></pre>
 </div>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb37"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a>mpsz <span class="ot">&lt;-</span> <span class="fu">st_set_crs</span>(mpsz, <span class="dv">3414</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
+<p>Next, filter to “Tampines West” and plot the intersection.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb38"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a>mpsz <span class="ot">&lt;-</span> <span class="fu">st_set_crs</span>(mpsz, <span class="dv">3414</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb38"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a>mpsz_selected <span class="ot">&lt;-</span> mpsz <span class="sc">%&gt;%</span></span>
+<span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(SUBZONE_N <span class="sc">==</span> <span class="st">"TAMPINES WEST"</span>) </span>
+<span id="cb38-3"><a href="#cb38-3" aria-hidden="true" tabindex="-1"></a>buffer_cycling_selected <span class="ot">&lt;-</span> <span class="fu">st_intersection</span>(</span>
+<span id="cb38-4"><a href="#cb38-4" aria-hidden="true" tabindex="-1"></a>  buffer_cycling, mpsz_selected)</span>
+<span id="cb38-5"><a href="#cb38-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="fu">st_geometry</span>(buffer_cycling_selected))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="Hands-on_Ex01_files/figure-html/unnamed-chunk-25-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
 </div>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb39"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a>mpsz <span class="ot">&lt;-</span> <span class="fu">st_set_crs</span>(mpsz, <span class="dv">3414</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb40"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a>mpsz <span class="ot">&lt;-</span> <span class="fu">st_set_crs</span>(mpsz, <span class="dv">3414</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
+</section>
+<section id="use-case-2-determine-the-number-of-pre-schools-by-planning-subzone" class="level3">
+<h3 class="anchored" data-anchor-id="use-case-2-determine-the-number-of-pre-schools-by-planning-subzone">Use case 2: Determine the number of pre-schools by planning subzone</h3>
+<p>Use R and sf package to perform necessary geoprocessing to compute these counts.</p>
+<p>First, identify pre-schools located inside each Planning Subzone by using st_intersects(). Next, length() of Base R is used to calculate numbers of pre-schools that fall inside each planning subzone.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb41"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a>mpsz <span class="ot">&lt;-</span> <span class="fu">st_set_crs</span>(mpsz, <span class="dv">3414</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb39"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a>mpsz<span class="sc">$</span><span class="st">`</span><span class="at">PreSch Count</span><span class="st">`</span><span class="ot">&lt;-</span> <span class="fu">lengths</span>(<span class="fu">st_intersects</span>(mpsz, preschool))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>This is the summary statistics for PreSchCount.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb40"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(mpsz<span class="sc">$</span><span class="st">`</span><span class="at">PreSch Count</span><span class="st">`</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   0.00    0.00    4.00    7.09   10.00   72.00 </code></pre>
+</div>
+</div>
+<p>This lists the planning subzone with the most number of pre-schools.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb42"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a><span class="fu">top_n</span>(mpsz, <span class="dv">1</span>, <span class="st">`</span><span class="at">PreSch Count</span><span class="st">`</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Simple feature collection with 1 feature and 16 fields
+Geometry type: MULTIPOLYGON
+Dimension:     XY
+Bounding box:  xmin: 39655.33 ymin: 35966 xmax: 42940.57 ymax: 38622.37
+Projected CRS: SVY21 / Singapore TM
+  OBJECTID SUBZONE_NO     SUBZONE_N SUBZONE_C CA_IND PLN_AREA_N PLN_AREA_C
+1      189          2 TAMPINES EAST    TMSZ02      N   TAMPINES         TM
+     REGION_N REGION_C          INC_CRC FMEL_UPD_D   X_ADDR   Y_ADDR SHAPE_Leng
+1 EAST REGION       ER 21658EAAF84F4D8D 2014-12-05 41122.55 37392.39   10180.62
+  SHAPE_Area                       geometry PreSch Count
+1    4339824 MULTIPOLYGON (((42196.76 38...           72</code></pre>
+</div>
+</div>
+<p>st_area() is used to derive the area of each planning subzone. mutate() is then used to compute the density.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb44"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a>mpsz<span class="sc">$</span>Area <span class="ot">&lt;-</span> mpsz <span class="sc">%&gt;%</span></span>
+<span id="cb44-2"><a href="#cb44-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_area</span>()</span>
+<span id="cb44-3"><a href="#cb44-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb44-4"><a href="#cb44-4" aria-hidden="true" tabindex="-1"></a>mpsz <span class="ot">&lt;-</span> mpsz <span class="sc">%&gt;%</span></span>
+<span id="cb44-5"><a href="#cb44-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="st">`</span><span class="at">PreSch Density</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">PreSch Count</span><span class="st">`</span><span class="sc">/</span>Area <span class="sc">*</span> <span class="dv">1000000</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Using hist(), we can plot a histogram to show the distribution of PreSch Density.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb45"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(mpsz<span class="sc">$</span><span class="st">`</span><span class="at">PreSch Density</span><span class="st">`</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="Hands-on_Ex01_files/figure-html/unnamed-chunk-30-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Using ggplot2, we can customise the histogram.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb46"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data=</span>mpsz, </span>
+<span id="cb46-2"><a href="#cb46-2" aria-hidden="true" tabindex="-1"></a>       <span class="fu">aes</span>(<span class="at">x=</span> <span class="fu">as.numeric</span>(<span class="st">`</span><span class="at">PreSch Density</span><span class="st">`</span>)))<span class="sc">+</span></span>
+<span id="cb46-3"><a href="#cb46-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">bins=</span><span class="dv">20</span>, </span>
+<span id="cb46-4"><a href="#cb46-4" aria-hidden="true" tabindex="-1"></a>                 <span class="at">color=</span><span class="st">"black"</span>, </span>
+<span id="cb46-5"><a href="#cb46-5" aria-hidden="true" tabindex="-1"></a>                 <span class="at">fill=</span><span class="st">"light blue"</span>) <span class="sc">+</span></span>
+<span id="cb46-6"><a href="#cb46-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"Are pre-school evenly distributed in Singapore?"</span>,</span>
+<span id="cb46-7"><a href="#cb46-7" aria-hidden="true" tabindex="-1"></a>       <span class="at">subtitle=</span> <span class="st">"There are many planning subzones with a single pre-school, on the other hand, </span><span class="sc">\n</span><span class="st">there are seven planning subzones with at least 30 or more pre-schools"</span>,</span>
+<span id="cb46-8"><a href="#cb46-8" aria-hidden="true" tabindex="-1"></a>      <span class="at">x =</span> <span class="st">"Pre-school density (per km sq)"</span>,</span>
+<span id="cb46-9"><a href="#cb46-9" aria-hidden="true" tabindex="-1"></a>      <span class="at">y =</span> <span class="st">"Frequency"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="Hands-on_Ex01_files/figure-html/unnamed-chunk-31-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>A scatterplot showing the relationship between Pre-school Density and Pre-school Count can be created using ggplot.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb47"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data=</span>mpsz, </span>
+<span id="cb47-2"><a href="#cb47-2" aria-hidden="true" tabindex="-1"></a>       <span class="fu">aes</span>(<span class="at">y =</span> <span class="st">`</span><span class="at">PreSch Count</span><span class="st">`</span>, </span>
+<span id="cb47-3"><a href="#cb47-3" aria-hidden="true" tabindex="-1"></a>           <span class="at">x=</span> <span class="fu">as.numeric</span>(<span class="st">`</span><span class="at">PreSch Density</span><span class="st">`</span>)))<span class="sc">+</span></span>
+<span id="cb47-4"><a href="#cb47-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">color=</span><span class="st">"black"</span>, </span>
+<span id="cb47-5"><a href="#cb47-5" aria-hidden="true" tabindex="-1"></a>             <span class="at">fill=</span><span class="st">"light blue"</span>) <span class="sc">+</span></span>
+<span id="cb47-6"><a href="#cb47-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">xlim</span>(<span class="dv">0</span>, <span class="dv">40</span>) <span class="sc">+</span></span>
+<span id="cb47-7"><a href="#cb47-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ylim</span>(<span class="dv">0</span>, <span class="dv">40</span>) <span class="sc">+</span></span>
+<span id="cb47-8"><a href="#cb47-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">""</span>,</span>
+<span id="cb47-9"><a href="#cb47-9" aria-hidden="true" tabindex="-1"></a>      <span class="at">x =</span> <span class="st">"Pre-school density (per km sq)"</span>,</span>
+<span id="cb47-10"><a href="#cb47-10" aria-hidden="true" tabindex="-1"></a>      <span class="at">y =</span> <span class="st">"Pre-school count"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="Hands-on_Ex01_files/figure-html/unnamed-chunk-32-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
 </div>
 
 
