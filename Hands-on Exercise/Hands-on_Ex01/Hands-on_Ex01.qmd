@@ -11,7 +11,9 @@ execute:
   freeze: true
 ---
 
-## Getting Started
+## Geospatial Data Wrangling
+
+### Getting Started
 
 Install and launch R packages
 
@@ -21,7 +23,7 @@ The code chunk below uses p_load of pacman package to check if tidyverse package
 pacman::p_load(sf, tidyverse, here)
 ```
 
-## Importing the Data
+### Importing the Data
 
 Importing polygon feature data in shapefile format
 
@@ -43,7 +45,7 @@ Importing GIS data in kml format
 preschool = st_read("data/geospatial/PreSchoolsLocation.kml")
 ```
 
-## Data Exploration
+### Displaying Data
 
 st_geometry() displays basic geospatial information.
 
@@ -63,7 +65,7 @@ head() shows complete information of a feature object.
 head(mpsz, n=5)  
 ```
 
-## Plotting Geospatial Data
+### Plotting Geospatial Data
 
 Below is a multi-plot of all attributes.
 
@@ -91,7 +93,7 @@ plot(st_geometry(preschool),
      add = TRUE)
 ```
 
-## Projection Transformation
+### Projection Transformation
 
 mpsz data frame is projected in SVY21, but EPSG code is wrong (should be 3414 instead of 9001).
 
@@ -121,7 +123,7 @@ plot(st_geometry(mpsz))
 plot(st_geometry(preschool), add = TRUE)
 ```
 
-## Importing and Converting Aspatial Data
+### Importing and Converting Aspatial Data
 
 ```{r}
 listings <- read_csv("data/aspatial/listings.csv")
@@ -131,7 +133,7 @@ listings <- read_csv("data/aspatial/listings.csv")
 list(listings) 
 ```
 
-## Creating a simple feature data frame from an aspatial data frame
+### Creating a simple feature data frame from an aspatial data frame
 
 In coords argument, column name of x-coordinates is listed first, then followed by column name of y-coordinates. In crs argument, it requires the coordinates system in epsg format.(EPSG: 4326 is wgs84 Geographic Coordinate System and EPSG: 3414 is Singapore SVY21 Projected Coordinate System.)
 
@@ -150,11 +152,11 @@ plot(st_geometry(mpsz))
 plot(st_geometry(listings_sf), add = TRUE)
 ```
 
-## Geoprocessing with sf packages
+### Geoprocessing with sf packages
 
 sf package can perform geoprocessing functions (i.e. GIS analysis).
 
-### Use case 1: Land acquisition analysis
+#### Use case 1: Land acquisition analysis
 
 Task: to determine the extent of land needed to be acuired in the total area, to upgrade an existing cycling path.
 
@@ -193,7 +195,7 @@ buffer_cycling_selected <- st_intersection(
 plot(st_geometry(buffer_cycling_selected))
 ```
 
-### Use case 2: Determine the number of pre-schools by planning subzone
+#### Use case 2: Determine the number of pre-schools by planning subzone
 
 Use R and sf package to perform necessary geoprocessing to compute these counts.
 
@@ -216,6 +218,7 @@ top_n(mpsz, 1, `PreSch Count`)
 ```
 
 st_area() is used to derive the area of each planning subzone. mutate() is then used to compute the density.
+
 ```{r}
 mpsz$Area <- mpsz %>%
   st_area()
@@ -225,11 +228,13 @@ mpsz <- mpsz %>%
 ```
 
 Using hist(), we can plot a histogram to show the distribution of PreSch Density.
+
 ```{r}
 hist(mpsz$`PreSch Density`)
 ```
 
 Using ggplot2, we can customise the histogram.
+
 ```{r}
 ggplot(data=mpsz, 
        aes(x= as.numeric(`PreSch Density`)))+
@@ -243,6 +248,7 @@ ggplot(data=mpsz,
 ```
 
 A scatterplot showing the relationship between Pre-school Density and Pre-school Count can be created using ggplot.
+
 ```{r}
 ggplot(data=mpsz, 
        aes(y = `PreSch Count`, 
@@ -255,4 +261,3 @@ ggplot(data=mpsz,
       x = "Pre-school density (per km sq)",
       y = "Pre-school count")
 ```
-
