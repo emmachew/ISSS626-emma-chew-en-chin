@@ -1,7 +1,5 @@
 ---
-title: "ISSS626"
+title: "ISSS626 - Geospatial Analytics and Applications"
 ---
 
-This is a Quarto website.
-
-To learn more about Quarto websites visit <https://quarto.org/docs/websites>.
+This course provides a comprehensive foundation in the principles and tools of geospatial data analytics. I learned to move beyond simple data visualization to geospatial analysis, using location data to display and derive insights for decision making.

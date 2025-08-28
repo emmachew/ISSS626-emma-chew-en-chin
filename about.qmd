@@ -2,8 +2,6 @@
 title: "About"
 ---
 
-About this site
+### About Me
 
-```{r}
-1 + 1
-```
+Hi there! I'm Emma, a Marketing Analyst and Consultant with over seven years of experience transforming complex data into actionable strategies. My expertise spans quantitative analysis, image analytics, and geospatial data, allowing me to provide a multidimensional perspective to support real-world decision making.
