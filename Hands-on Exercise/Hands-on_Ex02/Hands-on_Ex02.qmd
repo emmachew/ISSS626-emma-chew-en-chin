@@ -1,5 +1,5 @@
 ---
-title: "Hands-on Exercise 1"
+title: "Hands-on Exercise 2"
 author: "Emma Chew En Chin"
 date: "Aug 28, 2025"
 date-modified: "last-modified"
