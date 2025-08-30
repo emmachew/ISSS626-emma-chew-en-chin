@@ -196,17 +196,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#getting-started" id="toc-getting-started" class="nav-link active" data-scroll-target="#getting-started">Getting Started</a></li>
-  <li><a href="#importing-the-data" id="toc-importing-the-data" class="nav-link" data-scroll-target="#importing-the-data">Importing the Data</a></li>
-  <li><a href="#data-exploration" id="toc-data-exploration" class="nav-link" data-scroll-target="#data-exploration">Data Exploration</a></li>
-  <li><a href="#plotting-geospatial-data" id="toc-plotting-geospatial-data" class="nav-link" data-scroll-target="#plotting-geospatial-data">Plotting Geospatial Data</a></li>
-  <li><a href="#projection-transformation" id="toc-projection-transformation" class="nav-link" data-scroll-target="#projection-transformation">Projection Transformation</a></li>
-  <li><a href="#importing-and-converting-aspatial-data" id="toc-importing-and-converting-aspatial-data" class="nav-link" data-scroll-target="#importing-and-converting-aspatial-data">Importing and Converting Aspatial Data</a></li>
-  <li><a href="#creating-a-simple-feature-data-frame-from-an-aspatial-data-frame" id="toc-creating-a-simple-feature-data-frame-from-an-aspatial-data-frame" class="nav-link" data-scroll-target="#creating-a-simple-feature-data-frame-from-an-aspatial-data-frame">Creating a simple feature data frame from an aspatial data frame</a></li>
-  <li><a href="#geoprocessing-with-sf-packages" id="toc-geoprocessing-with-sf-packages" class="nav-link" data-scroll-target="#geoprocessing-with-sf-packages">Geoprocessing with sf packages</a>
+  <li><a href="#geospatial-data-wrangling" id="toc-geospatial-data-wrangling" class="nav-link active" data-scroll-target="#geospatial-data-wrangling">1 Geospatial Data Wrangling</a>
   <ul class="collapse">
-  <li><a href="#use-case-1-land-acquisition-analysis" id="toc-use-case-1-land-acquisition-analysis" class="nav-link" data-scroll-target="#use-case-1-land-acquisition-analysis">Use case 1: Land acquisition analysis</a></li>
-  <li><a href="#use-case-2-determine-the-number-of-pre-schools-by-planning-subzone" id="toc-use-case-2-determine-the-number-of-pre-schools-by-planning-subzone" class="nav-link" data-scroll-target="#use-case-2-determine-the-number-of-pre-schools-by-planning-subzone">Use case 2: Determine the number of pre-schools by planning subzone</a></li>
+  <li><a href="#getting-started" id="toc-getting-started" class="nav-link" data-scroll-target="#getting-started">1.1 Getting Started</a></li>
+  <li><a href="#importing-the-data" id="toc-importing-the-data" class="nav-link" data-scroll-target="#importing-the-data">1.2 Importing the Data</a></li>
+  <li><a href="#displaying-data" id="toc-displaying-data" class="nav-link" data-scroll-target="#displaying-data">1.3 Displaying Data</a></li>
+  <li><a href="#plotting-geospatial-data" id="toc-plotting-geospatial-data" class="nav-link" data-scroll-target="#plotting-geospatial-data">1.4 Plotting Geospatial Data</a></li>
+  <li><a href="#projection-transformation" id="toc-projection-transformation" class="nav-link" data-scroll-target="#projection-transformation">1.5 Projection Transformation</a></li>
+  <li><a href="#importing-and-converting-aspatial-data" id="toc-importing-and-converting-aspatial-data" class="nav-link" data-scroll-target="#importing-and-converting-aspatial-data">1.6 Importing and Converting Aspatial Data</a></li>
+  <li><a href="#creating-a-simple-feature-data-frame-from-an-aspatial-data-frame" id="toc-creating-a-simple-feature-data-frame-from-an-aspatial-data-frame" class="nav-link" data-scroll-target="#creating-a-simple-feature-data-frame-from-an-aspatial-data-frame">1.7 Creating a simple feature data frame from an aspatial data frame</a></li>
+  <li><a href="#geoprocessing-with-sf-packages" id="toc-geoprocessing-with-sf-packages" class="nav-link" data-scroll-target="#geoprocessing-with-sf-packages">1.8 Geoprocessing with sf packages</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -240,7 +239,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <div>
     <div class="quarto-title-meta-heading">Modified</div>
     <div class="quarto-title-meta-contents">
-      <p class="date-modified">August 28, 2025</p>
+      <p class="date-modified">August 30, 2025</p>
     </div>
   </div>
     
@@ -251,16 +250,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<section id="getting-started" class="level2">
-<h2 class="anchored" data-anchor-id="getting-started">Getting Started</h2>
+<section id="geospatial-data-wrangling" class="level2">
+<h2 class="anchored" data-anchor-id="geospatial-data-wrangling">1 Geospatial Data Wrangling</h2>
+<section id="getting-started" class="level3">
+<h3 class="anchored" data-anchor-id="getting-started">1.1 Getting Started</h3>
 <p>Install and launch R packages</p>
 <p>The code chunk below uses p_load of pacman package to check if tidyverse package have been installed.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>pacman<span class="sc">::</span><span class="fu">p_load</span>(sf, tidyverse, here)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
-<section id="importing-the-data" class="level2">
-<h2 class="anchored" data-anchor-id="importing-the-data">Importing the Data</h2>
+<section id="importing-the-data" class="level3">
+<h3 class="anchored" data-anchor-id="importing-the-data">1.2 Importing the Data</h3>
 <p>Importing polygon feature data in shapefile format</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>mpsz <span class="ot">=</span> <span class="fu">st_read</span>(<span class="at">dsn =</span> <span class="st">"data/geospatial/MasterPlan2014SubzoneBoundaryWebSHP"</span>, </span>
@@ -307,8 +308,8 @@ Geodetic CRS:  WGS 84</code></pre>
 </div>
 </div>
 </section>
-<section id="data-exploration" class="level2">
-<h2 class="anchored" data-anchor-id="data-exploration">Data Exploration</h2>
+<section id="displaying-data" class="level3">
+<h3 class="anchored" data-anchor-id="displaying-data">1.3 Displaying Data</h3>
 <p>st_geometry() displays basic geospatial information.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">st_geometry</span>(mpsz)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
@@ -375,8 +376,8 @@ Projected CRS: SVY21
 </div>
 </div>
 </section>
-<section id="plotting-geospatial-data" class="level2">
-<h2 class="anchored" data-anchor-id="plotting-geospatial-data">Plotting Geospatial Data</h2>
+<section id="plotting-geospatial-data" class="level3">
+<h3 class="anchored" data-anchor-id="plotting-geospatial-data">1.4 Plotting Geospatial Data</h3>
 <p>Below is a multi-plot of all attributes.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(mpsz)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
@@ -424,8 +425,8 @@ Projected CRS: SVY21
 </div>
 </div>
 </section>
-<section id="projection-transformation" class="level2">
-<h2 class="anchored" data-anchor-id="projection-transformation">Projection Transformation</h2>
+<section id="projection-transformation" class="level3">
+<h3 class="anchored" data-anchor-id="projection-transformation">1.5 Projection Transformation</h3>
 <p>mpsz data frame is projected in SVY21, but EPSG code is wrong (should be 3414 instead of 9001).</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="fu">st_crs</span>(mpsz)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
@@ -580,8 +581,8 @@ PROJCRS["SVY21 / Singapore TM",
 </div>
 </div>
 </section>
-<section id="importing-and-converting-aspatial-data" class="level2">
-<h2 class="anchored" data-anchor-id="importing-and-converting-aspatial-data">Importing and Converting Aspatial Data</h2>
+<section id="importing-and-converting-aspatial-data" class="level3">
+<h3 class="anchored" data-anchor-id="importing-and-converting-aspatial-data">1.6 Importing and Converting Aspatial Data</h3>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>listings <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"data/aspatial/listings.csv"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
@@ -612,8 +613,8 @@ PROJCRS["SVY21 / Singapore TM",
 </div>
 </div>
 </section>
-<section id="creating-a-simple-feature-data-frame-from-an-aspatial-data-frame" class="level2">
-<h2 class="anchored" data-anchor-id="creating-a-simple-feature-data-frame-from-an-aspatial-data-frame">Creating a simple feature data frame from an aspatial data frame</h2>
+<section id="creating-a-simple-feature-data-frame-from-an-aspatial-data-frame" class="level3">
+<h3 class="anchored" data-anchor-id="creating-a-simple-feature-data-frame-from-an-aspatial-data-frame">1.7 Creating a simple feature data frame from an aspatial data frame</h3>
 <p>In coords argument, column name of x-coordinates is listed first, then followed by column name of y-coordinates. In crs argument, it requires the coordinates system in epsg format.(EPSG: 4326 is wgs84 Geographic Coordinate System and EPSG: 3414 is Singapore SVY21 Projected Coordinate System.)</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>listings_sf <span class="ot">&lt;-</span> <span class="fu">st_as_sf</span>(listings, </span>
@@ -717,11 +718,11 @@ $ geometry                                     &lt;POINT [m]&gt; POINT (41972.5 
 </div>
 </div>
 </section>
-<section id="geoprocessing-with-sf-packages" class="level2">
-<h2 class="anchored" data-anchor-id="geoprocessing-with-sf-packages">Geoprocessing with sf packages</h2>
+<section id="geoprocessing-with-sf-packages" class="level3">
+<h3 class="anchored" data-anchor-id="geoprocessing-with-sf-packages">1.8 Geoprocessing with sf packages</h3>
 <p>sf package can perform geoprocessing functions (i.e.&nbsp;GIS analysis).</p>
-<section id="use-case-1-land-acquisition-analysis" class="level3">
-<h3 class="anchored" data-anchor-id="use-case-1-land-acquisition-analysis">Use case 1: Land acquisition analysis</h3>
+<section id="use-case-1-land-acquisition-analysis" class="level4">
+<h4 class="anchored" data-anchor-id="use-case-1-land-acquisition-analysis">1.8.1 Use case 1: Land acquisition analysis</h4>
 <p>Task: to determine the extent of land needed to be acuired in the total area, to upgrade an existing cycling path.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a>buffer_cycling <span class="ot">&lt;-</span> <span class="fu">st_buffer</span>(</span>
@@ -804,8 +805,8 @@ PROJCRS["SVY21 / Singapore TM",
 </div>
 </div>
 </section>
-<section id="use-case-2-determine-the-number-of-pre-schools-by-planning-subzone" class="level3">
-<h3 class="anchored" data-anchor-id="use-case-2-determine-the-number-of-pre-schools-by-planning-subzone">Use case 2: Determine the number of pre-schools by planning subzone</h3>
+<section id="use-case-2-determine-the-number-of-pre-schools-by-planning-subzone" class="level4">
+<h4 class="anchored" data-anchor-id="use-case-2-determine-the-number-of-pre-schools-by-planning-subzone">1.8.2 Use case 2: Determine the number of pre-schools by planning subzone</h4>
 <p>Use R and sf package to perform necessary geoprocessing to compute these counts.</p>
 <p>First, identify pre-schools located inside each Planning Subzone by using st_intersects(). Next, length() of Base R is used to calculate numbers of pre-schools that fall inside each planning subzone.</p>
 <div class="cell">
@@ -896,6 +897,7 @@ Projected CRS: SVY21 / Singapore TM
 </div>
 
 
+</section>
 </section>
 </section>
 
