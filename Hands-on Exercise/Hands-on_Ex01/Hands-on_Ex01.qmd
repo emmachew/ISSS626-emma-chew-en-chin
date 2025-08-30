@@ -11,9 +11,9 @@ execute:
   freeze: true
 ---
 
-## Geospatial Data Wrangling
+## 1 Geospatial Data Wrangling
 
-### Getting Started
+### 1.1 Getting Started
 
 Install and launch R packages
 
@@ -23,7 +23,7 @@ The code chunk below uses p_load of pacman package to check if tidyverse package
 pacman::p_load(sf, tidyverse, here)
 ```
 
-### Importing the Data
+### 1.2 Importing the Data
 
 Importing polygon feature data in shapefile format
 
@@ -45,7 +45,7 @@ Importing GIS data in kml format
 preschool = st_read("data/geospatial/PreSchoolsLocation.kml")
 ```
 
-### Displaying Data
+### 1.3 Displaying Data
 
 st_geometry() displays basic geospatial information.
 
@@ -65,7 +65,7 @@ head() shows complete information of a feature object.
 head(mpsz, n=5)  
 ```
 
-### Plotting Geospatial Data
+### 1.4 Plotting Geospatial Data
 
 Below is a multi-plot of all attributes.
 
@@ -93,7 +93,7 @@ plot(st_geometry(preschool),
      add = TRUE)
 ```
 
-### Projection Transformation
+### 1.5 Projection Transformation
 
 mpsz data frame is projected in SVY21, but EPSG code is wrong (should be 3414 instead of 9001).
 
@@ -123,7 +123,7 @@ plot(st_geometry(mpsz))
 plot(st_geometry(preschool), add = TRUE)
 ```
 
-### Importing and Converting Aspatial Data
+### 1.6 Importing and Converting Aspatial Data
 
 ```{r}
 listings <- read_csv("data/aspatial/listings.csv")
@@ -133,7 +133,7 @@ listings <- read_csv("data/aspatial/listings.csv")
 list(listings) 
 ```
 
-### Creating a simple feature data frame from an aspatial data frame
+### 1.7 Creating a simple feature data frame from an aspatial data frame
 
 In coords argument, column name of x-coordinates is listed first, then followed by column name of y-coordinates. In crs argument, it requires the coordinates system in epsg format.(EPSG: 4326 is wgs84 Geographic Coordinate System and EPSG: 3414 is Singapore SVY21 Projected Coordinate System.)
 
@@ -152,11 +152,11 @@ plot(st_geometry(mpsz))
 plot(st_geometry(listings_sf), add = TRUE)
 ```
 
-### Geoprocessing with sf packages
+### 1.8 Geoprocessing with sf packages
 
 sf package can perform geoprocessing functions (i.e. GIS analysis).
 
-#### Use case 1: Land acquisition analysis
+#### 1.8.1 Use case 1: Land acquisition analysis
 
 Task: to determine the extent of land needed to be acuired in the total area, to upgrade an existing cycling path.
 
@@ -195,7 +195,7 @@ buffer_cycling_selected <- st_intersection(
 plot(st_geometry(buffer_cycling_selected))
 ```
 
-#### Use case 2: Determine the number of pre-schools by planning subzone
+#### 1.8.2 Use case 2: Determine the number of pre-schools by planning subzone
 
 Use R and sf package to perform necessary geoprocessing to compute these counts.
 
