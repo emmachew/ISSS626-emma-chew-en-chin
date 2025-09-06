@@ -387,6 +387,7 @@ tmap_style("white")
 ### 10.1 Method 1: Assign multiple values to at least one of the aesthetic arguments
 
 ```{r}
+#| fig-width: 12
 tm_shape(mpsz_pop2024) + 
   tm_polygons(
     fill = c("YOUNG", "AGED"),
