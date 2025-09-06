@@ -183,6 +183,38 @@ window.Quarto = {
     <a class="dropdown-item" href="../../Hands-on Exercise/Hands-on_Ex05/Hands-on_Ex05.html">
  <span class="dropdown-text">Hands-on Exercise 5</span></a>
   </li>  
+        <li>
+    <a class="dropdown-item" href="../../Hands-on Exercise/Hands-on_Ex06/Hands-on_Ex06.html">
+ <span class="dropdown-text">Hands-on Exercise 6</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="../../Hands-on Exercise/Hands-on_Ex07/Hands-on_Ex07.html">
+ <span class="dropdown-text">Hands-on Exercise 7</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="../../Hands-on Exercise/Hands-on_Ex08/Hands-on_Ex08.html">
+ <span class="dropdown-text">Hands-on Exercise 8</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="../../Hands-on Exercise/Hands-on_Ex09/Hands-on_Ex09.html">
+ <span class="dropdown-text">Hands-on Exercise 9</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="../../Hands-on Exercise/Hands-on_Ex10/Hands-on_Ex10.html">
+ <span class="dropdown-text">Hands-on Exercise 10</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="../../Hands-on Exercise/Hands-on_Ex11/Hands-on_Ex11.html">
+ <span class="dropdown-text">Hands-on Exercise 11</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="../../Hands-on Exercise/Hands-on_Ex12/Hands-on_Ex12.html">
+ <span class="dropdown-text">Hands-on Exercise 12</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="../../Hands-on Exercise/Hands-on_Ex13/Hands-on_Ex13.html">
+ <span class="dropdown-text">Hands-on Exercise 13</span></a>
+  </li>  
     </ul>
   </li>
   <li class="nav-item">
@@ -195,8 +227,14 @@ window.Quarto = {
  <span class="menu-text"></span>
     </a>
     <ul class="dropdown-menu" aria-labelledby="nav-menu--1">    
-        <li class="dropdown-header">In-class Exercise 1</li>
-        <li class="dropdown-header">In-class Exercise 2</li>
+        <li>
+    <a class="dropdown-item" href="../../In-class Exercise/In-class_Ex01/In-class_Ex01.html">
+ <span class="dropdown-text">In-class Exercise 1</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="../../In-class Exercise/In-class_Ex02/In-class_Ex02.html">
+ <span class="dropdown-text">In-class Exercise 2</span></a>
+  </li>  
     </ul>
   </li>
 </ul>
@@ -279,7 +317,7 @@ window.Quarto = {
     <div>
     <div class="quarto-title-meta-heading">Modified</div>
     <div class="quarto-title-meta-contents">
-      <p class="date-modified">September 4, 2025</p>
+      <p class="date-modified">September 6, 2025</p>
     </div>
   </div>
     
@@ -471,7 +509,7 @@ Geodetic CRS:  WGS 84</code></pre>
 </div>
 </div>
 </div>
-<p>Since <span class="math inline">\(G_{\text{bord}}(r)\)</span> is above <span class="math inline">\(G_{\text{pois}}(r)\)</span> there may be a clustering pattern observed. However, it is still close to the <span class="math inline">\(G_{\text{pois}}(r)\)</span> line.</p>
+<p>The <span class="math inline">\(G_{\text{bord}}(r)\)</span> line rises earlier than the <span class="math inline">\(G_{\text{pois}}(r)\)</span> (CSR) line, indicating that many points have very close neighbours and that clustering exists.</p>
 </section>
 <section id="performing-complete-spatial-randomness-test" class="level4">
 <h4 class="anchored" data-anchor-id="performing-complete-spatial-randomness-test">3.1.2 Performing Complete Spatial Randomness Test</h4>
@@ -517,7 +555,7 @@ Done.</code></pre>
 <p><span class="math inline">\(G_{\text{obs}}(r)\)</span> (Black solid line): The observed G-function from the actual data</p>
 <p><span class="math inline">\(G_{\text{theo}}(r)\)</span> (Red solid line): The theoretical G-function for Complete Spatial Randomness (CSR)</p>
 <p><span class="math inline">\(G_{\text{hi}}(r)\)</span> and <span class="math inline">\(G_{\text{lo}}(r)\)</span> (Grey envelope): The simulation envelope from Monte Carlo simulations</p>
-<p>As <span class="math inline">\(G_{\text{obs}}(r)\)</span> stays within the grey envelope, the point pattern is not significantly different from random (CSR). Any deviations could be due to chance.</p>
+<p>As <span class="math inline">\(G_{\text{obs}}(r)\)</span> lies above the grey envelope for shorter distances, it indicates that the clustering effect is mainly local.</p>
 </section>
 </section>
 <section id="tampines-planning-area" class="level3">
@@ -535,7 +573,7 @@ Done.</code></pre>
 </div>
 </div>
 </div>
-<p>The gap between <span class="math inline">\(G_{\text{bord}}(r)\)</span> and <span class="math inline">\(G_{\text{pois}}(r)\)</span> is wider, and there is higher likelihood that a clustering pattern observed.</p>
+<p>The gap between <span class="math inline">\(G_{\text{bord}}(r)\)</span> and <span class="math inline">\(G_{\text{pois}}(r)\)</span> (CRS) lines are consistently wide, showing a regular pattern. There is a steep increase at shorter distances, hence local clustering may be present.</p>
 </section>
 <section id="performing-complete-spatial-randomness-test-1" class="level4">
 <h4 class="anchored" data-anchor-id="performing-complete-spatial-randomness-test-1">3.2.2 Performing Complete Spatial Randomness Test</h4>
@@ -578,7 +616,7 @@ Done.</code></pre>
 </div>
 </div>
 </div>
-<p>As <span class="math inline">\(G_{\text{obs}}(r)\)</span> is above the grey envelope, clustering is observed.</p>
+<p>As <span class="math inline">\(G_{\text{obs}}(r)\)</span> goes above the grey envelope in short distances, local clustering is observed.</p>
 </section>
 </section>
 </section>
@@ -606,7 +644,7 @@ Done.</code></pre>
 </div>
 </div>
 </div>
-<p><span class="math inline">\(F_{km}(r)\)</span> is below <span class="math inline">\(F_{pois}(r)\)</span>, indicating that it is a regular/uniform pattern, as random locations are further from the points than expected in CSR.</p>
+<p><span class="math inline">\(F_{km}(r)\)</span> aligned with <span class="math inline">\(F_{pois}(r)\)</span>, indicating that it is close to CSR.</p>
 </section>
 <section id="performing-complete-spatial-randomness-test-2" class="level4">
 <h4 class="anchored" data-anchor-id="performing-complete-spatial-randomness-test-2">4.1.2 Performing Complete Spatial Randomness Test</h4>
@@ -709,7 +747,7 @@ Done.</code></pre>
 </div>
 </div>
 </div>
-<p>The <span class="math inline">\(F_{\text{obs}}(r)\)</span> line goes below the envelope, indicating that the points are clustered.</p>
+<p>The <span class="math inline">\(F_{\text{obs}}(r)\)</span> line goes below the envelope for large distances, indicating that the points are clustered.</p>
 </section>
 </section>
 </section>

@@ -175,7 +175,7 @@ G_CK = Gest(childcare_ck_ppp, correction = "border")
 plot(G_CK, xlim=c(0,500))
 ```
 
-Since $G_{\text{bord}}(r)$ is above $G_{\text{pois}}(r)$ there may be a clustering pattern observed. However, it is still close to the $G_{\text{pois}}(r)$ line.
+The $G_{\text{bord}}(r)$ line rises earlier than the $G_{\text{pois}}(r)$ (CSR) line, indicating that many points have very close neighbours and that clustering exists.
 
 #### 3.1.2 Performing Complete Spatial Randomness Test
 
@@ -203,7 +203,7 @@ $G_{\text{theo}}(r)$ (Red solid line): The theoretical G-function for Complete S
 
 $G_{\text{hi}}(r)$ and $G_{\text{lo}}(r)$ (Grey envelope): The simulation envelope from Monte Carlo simulations
 
-As $G_{\text{obs}}(r)$ stays within the grey envelope, the point pattern is not significantly different from random (CSR). Any deviations could be due to chance.
+As $G_{\text{obs}}(r)$ lies above the grey envelope for shorter distances, it indicates that the clustering effect is mainly local.
 
 ### 3.2 Tampines planning area
 
@@ -214,7 +214,7 @@ G_tm = Gest(childcare_tm_ppp, correction = "best")
 plot(G_tm)
 ```
 
-The gap between $G_{\text{bord}}(r)$ and $G_{\text{pois}}(r)$ is wider, and there is higher likelihood that a clustering pattern observed.
+The gap between $G_{\text{bord}}(r)$ and $G_{\text{pois}}(r)$ (CRS) lines are consistently wide, showing a regular pattern. There is a steep increase at shorter distances, hence local clustering may be present.
 
 #### 3.2.2 Performing Complete Spatial Randomness Test
 
@@ -236,7 +236,7 @@ G_tm.csr <- envelope(childcare_tm_ppp, Gest, correction = "all", nsim = 999)
 plot(G_tm.csr)
 ```
 
-As $G_{\text{obs}}(r)$ is above the grey envelope, clustering is observed.
+As $G_{\text{obs}}(r)$ goes above the grey envelope in short distances, local clustering is observed.
 
 ## 4 Analysing Spatial Point Process Using F-Function
 
@@ -259,7 +259,7 @@ F_CK = Fest(childcare_ck_ppp)
 plot(F_CK)
 ```
 
-$F_{km}(r)$ is below $F_{pois}(r)$, indicating that it is a regular/uniform pattern, as random locations are further from the points than expected in CSR.
+$F_{km}(r)$ aligned with $F_{pois}(r)$, indicating that it is close to CSR.
 
 #### 4.1.2 Performing Complete Spatial Randomness Test
 
@@ -312,7 +312,7 @@ F_tm.csr <- envelope(childcare_tm_ppp, Fest, correction = "all", nsim = 999)
 plot(F_tm.csr)
 ```
 
-The $F_{\text{obs}}(r)$ line goes below the envelope, indicating that the points are clustered.
+The $F_{\text{obs}}(r)$ line goes below the envelope for large distances, indicating that the points are clustered.
 
 ## 5 Analysing Spatial Point Process Using K-Function
 
