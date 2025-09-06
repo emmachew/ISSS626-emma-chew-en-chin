@@ -90,7 +90,7 @@ childcare_sf <- st_read("data/geospatial/ChildCareServices.kml") %>%
 Plotting a static map of `childcare_sf`.
 
 ```{r}
-plot(st_geometry(mpsz_sf), col = "grey")
+plot(st_geometry(mpsz_cl), col = "grey")
 plot(st_geometry(childcare_sf), add = TRUE, pch = 19, col = "black", cex = 0.6)
 ```
 
