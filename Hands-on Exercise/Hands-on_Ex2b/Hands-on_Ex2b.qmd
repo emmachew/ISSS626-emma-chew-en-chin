@@ -1,5 +1,5 @@
 ---
-title: "Hands-on Exercise 2b"
+title: "2b: 2nd Order Spatial Point Patterns Analysis Methods"
 author: "Emma Chew En Chin"
 date: "Sep 4, 2025"
 date-modified: "last-modified"
