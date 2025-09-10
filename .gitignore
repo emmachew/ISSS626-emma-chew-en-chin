@@ -7,3 +7,9 @@
 
 /.quarto/
 data/
+
+# Ignore all zip files
+*.zip
+
+# Ignore all csv files
+*.csv
