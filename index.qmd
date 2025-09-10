@@ -2,4 +2,4 @@
 title: "ISSS626 - Geospatial Analytics and Applications"
 ---
 
-This course provides a comprehensive foundation in the principles and tools of geospatial data analytics. I learned to move beyond simple data visualization to geospatial analysis, using location data to display and derive insights for decision making.
+This course provides a comprehensive foundation in the principles and tools of geospatial data analytics. I learned to move beyond simple data visualisation to geospatial analysis, using location data to display and derive insights for decision making.
