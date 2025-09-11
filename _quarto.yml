@@ -6,7 +6,7 @@ website:
   navbar:
     left:
       - text: "Hands-on Exercise"
-      - menu: 
+        menu: 
         - text: "Hands-on Exercise 1a"
           href: "Hands-on Exercise/Hands-on_Ex1a/Hands-on_Ex1a.html"
         - text: "Hands-on Exercise 1b"
@@ -15,26 +15,11 @@ website:
           href: "Hands-on Exercise/Hands-on_Ex2a/Hands-on_Ex2a.html"
         - text: "Hands-on Exercise 2b"
           href: "Hands-on Exercise/Hands-on_Ex2b/Hands-on_Ex2b.html"
-        - text: "Hands-on Exercise 5"
-          href: "Hands-on Exercise/Hands-on_Ex05/Hands-on_Ex05.html"
-        - text: "Hands-on Exercise 6"
-          href: "Hands-on Exercise/Hands-on_Ex06/Hands-on_Ex06.html"
-        - text: "Hands-on Exercise 7"
-          href: "Hands-on Exercise/Hands-on_Ex07/Hands-on_Ex07.html"
-        - text: "Hands-on Exercise 8"
-          href: "Hands-on Exercise/Hands-on_Ex08/Hands-on_Ex08.html"
-        - text: "Hands-on Exercise 9"
-          href: "Hands-on Exercise/Hands-on_Ex09/Hands-on_Ex09.html"
-        - text: "Hands-on Exercise 10"
-          href: "Hands-on Exercise/Hands-on_Ex10/Hands-on_Ex10.html"
-        - text: "Hands-on Exercise 11"
-          href: "Hands-on Exercise/Hands-on_Ex11/Hands-on_Ex11.html"
-        - text: "Hands-on Exercise 12"
-          href: "Hands-on Exercise/Hands-on_Ex12/Hands-on_Ex12.html"
-        - text: "Hands-on Exercise 13"
-          href: "Hands-on Exercise/Hands-on_Ex13/Hands-on_Ex13.html"
+        - text: "Hands-on Exercise 3"
+          href: "Hands-on Exercise/Hands-on_Ex3/Hands-on_Ex3.html"
+          
       - text: "In-class Exercise"
-      - menu: 
+        menu: 
         - text: "In-class Exercise 1"
           href: "In-class Exercise/In-class_Ex01/In-class_Ex01.html"
         - text: "In-class Exercise 2" 
