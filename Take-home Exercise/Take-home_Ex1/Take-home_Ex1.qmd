@@ -1,0 +1,43 @@
+---
+title: "1: Geospatial Analytics for New Retail Store Development"
+author: "Emma Chew En Chin"
+date: "Sep 11, 2025"
+date-modified: "last-modified"
+format: html
+execute: 
+  echo: true
+  eval: true
+  warning: false
+  freeze: true
+---
+
+## 1 Overview
+
+### 1.1 Data Sets
+
+## 2 Preparing Data for Analysis
+
+### 2.1 Load R Packages
+
+```{r}
+pacman::p_load(sf, spatstat, tmap, tidyverse, rvest)
+```
+
+::: callout-note
+:::
+
+### 2.2 Import and Merge ACRA files
+
+```{r}
+# Get a list of all CSV files in your folder
+file_list <- list.files(path = "data/ACRAInformationonCorporateEntities",
+                        pattern = "\\.csv$", 
+                        full.names = TRUE)
+
+# Read all files into a list of data frames
+list_of_dfs <- lapply(file_list, read.csv) # Use read.csv2 if your data uses ';' as separator
+
+# Combine the list into one single data frame
+combined_df <- do.call("rbind", list_of_dfs)
+glimpse(combined_df)
+```
