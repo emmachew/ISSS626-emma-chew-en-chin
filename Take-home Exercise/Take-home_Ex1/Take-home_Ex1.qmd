@@ -20,24 +20,70 @@ execute:
 ### 2.1 Load R Packages
 
 ```{r}
-pacman::p_load(sf, spatstat, tmap, tidyverse, rvest)
+pacman::p_load(sf, tmap, spatstat, tidyverse, httr)
 ```
 
 ::: callout-note
+-   **httr:** provides a wrapper for the curl package
+
+-   **dplyr:** from sf, used for data manipulation
+
+-   **lubridate:** used to handle date and date-time data type
 :::
 
-### 2.2 Import and Merge ACRA files
+### 2.2 Import and Analyse Business Entity Data
+
+Data from ACRA is merged into one single dataframe.
 
 ```{r}
-# Get a list of all CSV files in your folder
-file_list <- list.files(path = "data/ACRAInformationonCorporateEntities",
-                        pattern = "\\.csv$", 
+# List all files in folder
+folder_path <- "data/aspatial/acra"
+file_list <- list.files(path = folder_path,
+                        pattern = "^ACRA*.*\\.csv$", 
                         full.names = TRUE)
-
-# Read all files into a list of data frames
-list_of_dfs <- lapply(file_list, read.csv) # Use read.csv2 if your data uses ';' as separator
+acra_data <- file_list %>%
+    map_dfr(read_csv)
 
 # Combine the list into one single data frame
-combined_df <- do.call("rbind", list_of_dfs)
+combined_df <- do.call("rbind", acra_data)
 glimpse(combined_df)
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
 ```
