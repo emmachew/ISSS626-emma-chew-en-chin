@@ -107,7 +107,13 @@ saveRDS(biz_56111, file = "data/rds/biz_56111_joined.rds")
 ### Loading the data and using X & Y coordinates as SVY21 projection
 
 ```{r}
-biz_56111_sf <- st_as_sf(biz_56111,
-                         coords = c("X", "Y"),
-                         crs=3414)
+biz_56111_fixed <- biz_56111 %>%
+  mutate(across(where(~is.factor(.) && nlevels(.) < 2), as.character))
+
+biz_56111_sf <- st_as_sf(biz_56111_fixed,
+                         coords = c("X", "Y"), # Lowercase 'c'
+                         crs = 3414)
+
+class(biz_56111_sf)
+plot(st_geometry(biz_56111_sf))
 ```
