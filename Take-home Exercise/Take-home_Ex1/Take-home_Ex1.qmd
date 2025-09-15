@@ -24,10 +24,10 @@ pacman::p_load(sf, tmap, spatstat, tidyverse, httr)
 ```
 
 ::: callout-note
+-   **sf:**
+-   **tmap:**
 -   **httr:** provides a wrapper for the curl package
-
 -   **dplyr:** from sf, used for data manipulation
-
 -   **lubridate:** used to handle date and date-time data type
 :::
 
@@ -42,14 +42,16 @@ file_list <- list.files(path = folder_path,
                         pattern = "^ACRA*.*\\.csv$", 
                         full.names = TRUE)
 acra_data <- file_list %>%
-    map_dfr(read_csv)
+  map(~ read_csv(.x)) %>%
+  bind_rows()
 
-# Combine the list into one single data frame
-combined_df <- do.call("rbind", acra_data)
-glimpse(combined_df)
+glimpse(acra_data)
 ```
 
 ```{r}
+live_companies <- acra_data %>%
+  filter(str_detect(entity_status_description, "^Live"))
+glimpse(live_companies)
 ```
 
 ```{r}

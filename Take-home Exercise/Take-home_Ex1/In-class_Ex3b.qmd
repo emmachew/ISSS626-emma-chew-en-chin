@@ -58,8 +58,7 @@ biz_56111 <- acra_data %>%
 
 ### Geocoding
 
-Extract unique postal code
-Use OneMap to do reverse geocoding
+Extract unique postal code Use OneMap to do reverse geocoding
 
 ```{r}
 postcodes <- unique(biz_56111$postal_code)
