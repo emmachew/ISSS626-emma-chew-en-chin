@@ -1,0 +1,607 @@
+---
+title: "4: Spatial Weights and Applications"
+author: "Emma Chew En Chin"
+date: "Sep 18, 2025"
+date-modified: "last-modified"
+format: html
+execute: 
+  echo: true
+  eval: true
+  warning: false
+  freeze: true
+---
+
+## 1 Overview
+
+**Spatial weights** are a mathematical way to formally define the relationships between different locations in a geographic dataset. They answer the question of "Which places are neighbors, and how strong is their connection?"
+
+**Spatial weights matrix** is built on 2 key decisions:
+
+1.  **Neighborhood Structure (Who is a neighbor?):**
+
+    -   **Contiguity:** Neighbors share a border (like adjacent counties or touching parcels). Can be "Queen" (share any edge or vertex) or "Rook" (share only an edge).
+
+    -   **Distance-Based:** All entities within a specified critical distance (e.g., 50 km) are neighbors.
+
+    -   **K-Nearest Neighbors (KNN):** Each entity has a fixed number of **k** closest neighbors (e.g., the 5 closest stores).
+
+    -   **Network-Based:** Neighbors are defined by paths on a network, like roads or rivers.
+
+2.  **Weighting Scheme (How strong is the connection?):**
+
+    -   **Binary:** The simplest form. `1` if two features are neighbors, `0` if they are not.
+
+    -   **Inverse Distance:** Weight is inversely proportional to the distance (e.g., `weight = 1 / distance`). Closer neighbors have a stronger influence than farther ones.
+
+    -   **Fixed Kernel:** Uses a decay function (like a Gaussian curve) to smoothly weight neighbors, with influence decreasing to zero at a certain bandwidth.
+
+## 2 Loading the Data
+
+### 2.1 Importing packages into R environment
+
+-   `spdep`: compute spatial weights and sptially lagged variables
+
+```{r}
+pacman::p_load(sf, spdep, tmap, tidyverse, knitr)
+```
+
+### 2.2 Importing shapefile into R environment
+
+```{r}
+hunan <- st_read(dsn = "data/geospatial", 
+                 layer = "Hunan")
+```
+
+### 2.3 Importing csv into R environment
+
+```{r}
+hunan2012 <- read_csv("data/aspatial/Hunan_2012.csv")
+```
+
+### 2.4 Performing relational join
+
+Using left_join() of `dplyr` package, joining the attribute table of *hunan*'s Spatial Polygons Dataframe with attribute fields of *hunan2012* dataframe.
+
+```{r}
+hunan <- left_join(hunan,hunan2012) %>%
+  select(1:4, 7, 15)
+```
+
+## 3 Visualising Regional Development Indicator
+
+Preparing a basemap and chloropleth map showing the distribution of GDPPC 2012 by using *qtm()* of tmap package.
+
+```{r}
+basemap <- tm_shape(hunan) +
+  tm_polygons() +
+  tm_text("NAME_3", size=0.3)
+
+gdppc <- qtm(hunan, "GDPPC") +
+  tm_layout(
+    legend.position = c("left", "bottom"),
+    legend.text.size = 0.4,        
+    legend.title.size = 0.4,       
+  )
+tmap_arrange(basemap, gdppc, asp=1, ncol=2)
+```
+
+## 4 Computing Contiguity Spatial Weights
+
+Using *poly2nb()* from the **spdep** package to compute contiguity weight matrices for the study area. This function builds a neighbours list based on regions with contiguous boundaries.
+
+The Queen criteria is a specific method for defining spatial neighbors in a polygon dataset. It's one of the two primary "contiguity" rules, the other being the "Rook" criteria.
+
+In the Queen criteria, two polygons are considered neighbors if they share at least a single point along their boundaries. This includes:
+
+-   Sharing a common edge (like two adjacent rooms in a house).
+-   Touching only at a corner (like the four corners of a U.S. state map where Utah, Colorado, New Mexico, and Arizona meet).
+
+Because it includes corner touches, the Queen criteria typically results in more neighbors than the Rook criteria.
+
+A “queen” argument can be passed that takes TRUE or FALSE as options. If you do not specify this argument the default is set to TRUE, and this function will return a list of first order neighbours using the Queen criteria.
+
+### 4.1 Computing (QUEEN) contiguity based on neighbours
+
+```{r}
+wm_q <- poly2nb(hunan, queen=TRUE)
+summary(wm_q)
+```
+
+The summary report shows that there are 88 area units in Hunan. The most connected area unit has 11 neighbours. There are two area units with only 1 neighbour.
+
+For each polygon in our polygon object, *wm_q* lists all neighboring polygons. For example, to see the neighbors for the first polygon in the object, we use wm_q\[\[1\]\].
+
+```{r}
+wm_q[[1]]
+```
+
+This shows that Polygon 1 has 5 neighbours. The numbers represent the polygon ids stored in the *hunan* Spatial Polygon DataFrame class.
+
+We can retrieve county name of Polygon 1 using the below code:
+
+```{r}
+hunan$County[1]
+```
+
+To reveal the county names of the five neighboring polygons, we can use the following code:
+
+```{r}
+hunan$NAME_3[c(2,3,4,57,85)]
+```
+
+Retrieving the GDPPC (GDP per capita) of these five counties.
+
+```{r}
+nb1 <- wm_q[[1]]
+nb1 <- hunan$GDPPC[nb1]
+nb1
+```
+
+Displaying the complete weight matrix from the Queen's method.
+
+```{r}
+str(wm_q)
+```
+
+### 4.2 Computing (ROOK) contiguity based neighbours
+
+::: bg-light
+| Criteria | Rule for being Neighbours                               |
+|----------|---------------------------------------------------------|
+| Queen    | Share **at least one point** (an edge **or** a vertex). |
+| Rook     | Share **a common edge only**.                           |
+:::
+
+```{r}
+wm_r <- poly2nb(hunan, queen=FALSE)
+summary(wm_r)
+```
+
+The summary report shows that there are 88 area units in Hunan. The most connected unit has 10 neighbours. There are 2 area units with only 1 neighbour.
+
+### 4.3 Visualising contiguity weights
+
+We can visualise contiguity weights with a connectivity graph. We will have to get points in order to make these graphs, through polygon centroids. This will be calculated using the **sf** package.
+
+We need the coordinates in a separate data frame using a mapping function. Our input vector will be the geometry column of `us.bound`. Our function will be `st_centroid`. We will be using **map_dbl** variation of map from the **purrr** package.
+
+To get our longitude values we map the `st_centroid` function over the geometry column of `us.bound` and access the longitude value through double bracket notation \[\[\]\] and 1. This allows us to get only the longitude, which is the first value in each centroid.
+
+```{r}
+longitude <- map_dbl(hunan$geometry, ~st_centroid(.x)[[1]])
+```
+
+Then, we get the latitude using the second value of each centroid.
+
+```{r}
+latitude <- map_dbl(hunan$geometry, ~st_centroid(.x)[[2]])
+```
+
+We then use `cbind` to put longitude and latitude into the same object.
+
+```{r}
+coords <- cbind(longitude, latitude)
+```
+
+Checking the first few observations to ensure correct formatting.
+
+```{r}
+head(coords)
+```
+
+#### 4.3.1 Plotting Queen contiguity based neighbours map
+
+```{r}
+plot(hunan$geometry, border="lightgrey")
+plot(wm_q, coords, pch = 19, cex = 0.6, add = TRUE, col= "red")
+```
+
+#### 4.3.2 Plotting Rook contiguity based neighbours map
+
+```{r}
+plot(hunan$geometry, border="lightgrey")
+plot(wm_r, coords, pch = 19, cex = 0.6, add = TRUE, col = "red")
+```
+
+#### 4.3.3 Plotting both Queen and Rook contiguity based neighbours maps
+
+```{r}
+par(mfrow = c(1, 2), mar = c(1, 1, 2, 1)) 
+plot(hunan$geometry, border="lightgrey", main="Queen Contiguity", cex.main = 0.8)   
+plot(wm_q, coords, pch = 19, cex = 0.6, add = TRUE, col= "red")
+plot(hunan$geometry, border="lightgrey", main="Rook Contiguity", cex.main = 0.8)
+plot(wm_r, coords, pch = 19, cex = 0.6, add = TRUE, col = "red")
+```
+
+## 5 Computing distance based neighbours
+
+Distance-based weight matrices can be derived using `dnearneigh()` of **spdep** package.
+
+The function identifies neighbours of region points by Euclidean distance with a distance band with lower d1= and upper d2= bounds controlled by the bounds= argument.
+
+If unprojected coordinates are used and either specified in the coordinates object x or with x as a two column matrix and longlat=TRUE, great circle distances in km will be calculated assuming the WGS84 reference ellipsoid.
+
+### 5.1 Determine the cut-off distance
+
+Firstly, we need to determine the upper limit for distance band by using the steps below:
+
+-   Return a matrix with the indices of points belonging to the set of the k nearest neighbours of each other by using `knearneigh()` of **spdep**.
+-   Convert the knn object returned by `knearneigh()` into a neighbours list of class nb with a list of integer vectors containing neighbour region number ids by using `knn2nb()`.
+-   Return the length of neighbour relationship edges by using `nbdists()` of **spdep**. The function returns in the units of the coordinates if the coordinates are projected, in km otherwise. Remove the list structure of the returned object by using `unlist()`.
+
+```{r}
+#coords <- coordinates(hunan)
+k1 <- knn2nb(knearneigh(coords))
+k1dists <- unlist(nbdists(k1, coords, longlat = TRUE))
+summary(k1dists)
+```
+
+The summary report shows that the largest first nearest neighbour distance is 61.79 km, so using this as the upper threshold gives certainty that all units will have at least one neighbour.
+
+### 5.2 Computing fixed distance weight matrix
+
+We will then compute distance weight matrix using `dnearneigh()`.
+
+```{r}
+wm_d62 <- dnearneigh(coords, 0, 62, longlat = TRUE)
+wm_d62
+```
+
+The summary report shows there are 324 non-zero links, which is the total count of all neighbour relationships (edges) found between all regions.
+
+The percentage of non-zero links shows the sparsity of the connectivity matrix. Out of the 88x88 grid where each cell indicates if the row region is a neighbour of the column region, there are 88\*88 = 7744 total possible links. Only (324/7744) = 4.18% links exist. This low percentage indicates a very sparse matrix, which is typical for contiguity-based neighbor definitions. Most regions are not neighbors with most other regions.
+
+The average number of links is the average number of neighbors that each region has. (324/88) = 3.68 This shows the connectedness of the network. A low average (1-2) signifies a linear dataset, while a high average (\>8) may indicate a highly interconnected network.
+
+Next, we use *str()* to display the content of wm_d62 weight matrix.
+
+```{r}
+str(wm_d62)
+```
+
+This is another way to display the structure of the weight matrix, by combining `table()` and `card()` of **spdep**.
+
+```{r}
+table(hunan$County, card(wm_d62))
+```
+
+This outputs a list object that shows nc (\[1\]) the number of connected components found, and comp.id (1) the vector indicating which component each region belongs to. As n_comp$nc = 1, the entire dataset is interconnected. If n_comp$nc \> 1, there are may disconnected groups of neighbours.
+
+```{r}
+n_comp <- n.comp.nb(wm_d62)
+n_comp$nc
+```
+
+table(n_comp\$comp.id) lists the number of regions in component 1, component 2 and so on. As there is only one component, all 88 regions are shown under it.
+
+```{r}
+table(n_comp$comp.id)
+```
+
+### 5.3 Plotting fixed distance weight matrix
+
+The red lines shows the links of 1st nearest neighbours while the black lines show the links of neighbours within the cut-off distance of 62km.
+
+```{r}
+plot(hunan$geometry, border="lightgrey")
+plot(wm_d62, coords, add=TRUE)
+plot(k1, coords, add=TRUE, col="red", length=0.08)
+```
+
+We can also plot them separately as shown below.
+
+```{r}
+par(mfrow = c(1, 2), mar = c(1, 1, 2, 1)) 
+plot(hunan$geometry, border="lightgrey", main="1st nearest neighbours")
+plot(k1, coords, add=TRUE, col="red", length=0.08)
+plot(hunan$geometry, border="lightgrey", main="Distance link")
+plot(wm_d62, coords, add=TRUE, pch = 19, cex = 0.6)
+```
+
+## 6 Computing adaptive distance weight matrix
+
+Fixed distance weight matrix are often characterised where more densely settled areas (usually the urban areas) tend to have more neighbours and the less densely settled areas (usually the rural counties) tend to have lesser neighbours. Having many neighbours smoothens the neighbour relationship across more neighbours.
+
+Adaptive distance weight matrix makes it possible to control the numbers of neighbours directly using k-nearest neighbours, either accepting asymmetric neighbours or imposing symmetry.
+
+```{r}
+knn6 <- knn2nb(knearneigh(coords, k=6))
+knn6
+```
+
+Displaying the content of the matrix.
+
+```{r}
+str(knn6)
+```
+
+Each county has 6 neighbours.
+
+### 6.1 Plotting distance based neighbours
+
+Plotting the weight matrix.
+
+```{r}
+plot(hunan$geometry, border="lightgrey")
+plot(knn6, coords, pch = 19, cex = 0.6, add = TRUE, col = "red")
+```
+
+## 7 Weights based on IDW
+
+Deriving a spatial weight matrix based on Inversed Distance method.
+
+**IDW (Inverse Distance Weighting)** is a method for defining spatial weights where the strength of the connection (the weight) between two locations is based on the principle of distance decay: things that are closer together have a stronger influence on each other than things that are farther apart.
+
+First, we compute the distances between areas using *nbdists()* of **spdep**.
+
+```{r}
+dist <- nbdists(wm_q, coords, longlat = TRUE)
+ids <- lapply(dist, function(x) 1/(x))
+ids
+```
+
+### 7.1 Row-standardised Weights Matrix
+
+We then assign weights to each neighbouring polygon. For this case, each neighbouring polygon will be assigned equal weight (style="W"). This is done by assigning 1/(# of neighbours) to each neighbouring county, then summing up the weighted income values.
+
+One limitation is that polygons along the edges of the study area will base their lagged values on fewer polygons thus potentially over- or under-estimating the true nature of the spatial autocorrelation in the data.
+
+For this example, we’ll stick with the style=“W” option for simplicity’s sake but note that other more robust options are available, notably style=“B”.
+
+```{r}
+rswm_q <- nb2listw(wm_q, style="W", zero.policy = TRUE)
+rswm_q
+```
+
+zero.policy = TRUE option allows for non-neighbours to be listed. This is to be used with caution as there may be missing neighbours in the dataset.
+
+The following code shows the weight of the first polygon’s eight neighbors type:
+
+```{r}
+rswm_q$weights[10]
+```
+
+Each neighbor is assigned a 0.125 of the total weight. This means that when R computes the average neighboring income values, each neighbor’s income will be multiplied by 0.125 before being tallied.
+
+Using the same method, we can also derive a row standardised distance weight matrix by using the code chunk below.
+
+```{r}
+rswm_ids <- nb2listw(wm_q, glist=ids, style="B", zero.policy=TRUE)
+rswm_ids
+```
+
+```{r}
+rswm_ids$weights[1]
+```
+
+```{r}
+summary(unlist(rswm_ids$weights))
+```
+
+## 8 Application of Spatial Weight Matrix
+
+There are 4 different spatial lagged variables:
+
+-   spatial lag with row-standardized weights,
+-   spatial lag as a sum of neighbouring values,
+-   spatial window average, and
+-   spatial window sum.
+
+### 8.1 Spatial lag with row-standardized weights
+
+We will compute the average neighbour GDPPC value for each polygon.
+
+-   `rswm_q` uses a row-standardized queen contiguity matrix, which defines who the neighbors are and the strength of their connection.
+
+This functions performs a weighted average for each region. When the region has a high value of **GDPPC.lag**, that means the region is surrounded by neighbors with high GDPPC. From here, we can explore clustering/dispersion behaviour.
+
+```{r}
+GDPPC.lag <- lag.listw(rswm_q, hunan$GDPPC)
+GDPPC.lag
+```
+
+We then retrieved the GDPPC of neighbour IDs for the first region, and retrieve the GDPPC values for those specific neighboring counties.
+
+The spatial lag for county 1 is not just the list of its neighbors' values. It is the row-standardized weighted average of those values.
+
+As rswm_q is row-standardised, each neighbour has an equal weight.or county #1 with 5 neighbors, each neighbor's weight is 1/5 = 0.2.
+
+Therefore, the spatial lag value for county #1 (GDPPC.lag\[1\]) is calculated as follows:
+
+(20981 \* 0.2) + (34592 \* 0.2) + (24473 \* 0.2) + (21311 \* 0.2) + (22879 \* 0.2)
+
+Thus GDPPC.lag\[1\] will be the average of GDPPC values from its neighbours.
+
+```{r}
+nb1 <- wm_q[[1]]
+nb1 <- hunan$GDPPC[nb1]
+nb1
+```
+
+Appending the spatially lag GDPPC values onto *hunan* sf data frame.
+
+```{r}
+lag.list <- list(hunan$NAME_3, lag.listw(rswm_q, hunan$GDPPC))
+lag.res <- as.data.frame(lag.list)
+colnames(lag.res) <- c("NAME_3", "lag GDPPC")
+hunan <- left_join(hunan,lag.res)
+```
+
+This shows the average neighboring income values (stored in the Inc.lag object) for each county.
+
+```{r}
+head(hunan)
+```
+
+Next, we will plot both the GDPPC and spatial lag GDPPC for comparison.
+
+```{r}
+par(mfrow = c(1, 2), mar = c(1, 1, 2, 1)) 
+gdppc <- qtm(hunan, "GDPPC")
+lag_gdppc <- qtm(hunan, "lag GDPPC")
+tmap_arrange(gdppc, lag_gdppc, asp=1, ncol=2)
+```
+
+### 8.2 Spatial lag as a sum of neighboring values
+
+The goal is to calculate the spatial lag as a simple sum of neighboring values (instead of an average). This requires manually creating a binary weights matrix.
+
+1.  **Binary Weights Assignment:** Use `lapply()` to iterate over the neighbor list (wm_q). For each element (i.e., for each region's list of neighbors), assign a weight of 1 to every neighbor. This creates a list where each element is a vector of 1s, the same length as the number of neighbors for that region.
+2.  **Build the Spatial Weights Object:** Use `nb2listw()` to formally create the spatial weights object. Crucially, use the glist= argument to provide the list of binary weight vectors created in step 1. Also, set style="B" to prevent any row-standardization or other transformations.
+3.  **Calculate the Lag:** Finally, use `lag.listw()` with this new binary weights object. The result will now be the sum of the neighboring values for each region, rather than their average.
+
+```{r}
+b_weights <- lapply(wm_q, function(x) 0*x + 1)
+b_weights2 <- nb2listw(wm_q, 
+                       glist = b_weights, 
+                       style = "B")
+b_weights2
+```
+
+After weights are assigned, we use *lag.listw* to compute weight and GDPPC.
+
+```{r}
+lag_sum <- list(hunan$NAME_3, lag.listw(b_weights2, hunan$GDPPC))
+lag.res <- as.data.frame(lag_sum)
+colnames(lag.res) <- c("NAME_3", "lag_sum GDPPC")
+```
+
+```{r}
+lag_sum
+```
+
+The large numbers show the sum of the GDPPC values for all neighbours of each county.
+
+We then append `lag_sum` GDPPC field into *hunan* sf data frame, and plot GDPPC and Spatial Lag Sum GDPPC for comparison.
+
+```{r}
+hunan <- left_join(hunan, lag.res)
+```
+
+```{r}
+gdppc <- qtm(hunan, "GDPPC")
+lag_sum_gdppc <- qtm(hunan, "lag_sum GDPPC")
+tmap_arrange(gdppc, lag_sum_gdppc, asp=1, ncol=2)
+```
+
+### 8.3 Spatial window average
+
+The spatial window average uses row-standardized weights and includes the diagonal element.
+
+We need to add the diagonal element to the neighbour list using `include.self()` from **spdep**.
+
+::: callout-note
+The Number of nonzero links, percentage nonzero weights and average number of links are 536, 6.921488 and 6.090909 respectively as compared to wm_q of 448, 5.785124 and 5.090909.
+:::
+
+```{r}
+wm_qs <- include.self(wm_q)
+```
+
+```{r}
+wm_qs[[1]]
+```
+
+County 1 now has six neighbours instead of 5.
+
+We then obtain weights with `nb2listw()`.
+
+```{r}
+wm_qs <- nb2listw(wm_qs)
+wm_qs
+```
+
+Next, we will convert the lag variable listw object into a data.frame by using `as.data.frame()`.
+
+`colnames()` renames field names of **lag_wm_q1.res** object into NAME_3 and lag_window_avg GDPPC respectively.
+
+```{r}
+lag.list.wm_qs <- list(hunan$NAME_3, lag.listw(wm_qs, hunan$GDPPC))
+lag_wm_qs.res <- as.data.frame(lag.list.wm_qs)
+colnames(lag_wm_qs.res) <- c("NAME_3", "lag_window_avg GDPPC")
+```
+
+We tend append *lag_window_avg* GDPPC values onto *hunan* sf data.frame by using `left_join()` of dplyr package.
+
+```{r}
+hunan <- left_join(hunan, lag_wm_qs.res)
+```
+
+A table is prepared below using `kable()` to compare the values of lag GDPPC and Spatial window average.
+
+```{r}
+hunan %>%
+  select("County", 
+         "lag GDPPC", 
+         "lag_window_avg GDPPC") %>%
+  kable()
+```
+
+Lastly, `qtm()` of tmap package is used to plot the lag_gdppc and w_ave_gdppc maps next to each other for quick comparison.
+
+```{r}
+w_avg_gdppc <- qtm(hunan, "lag_window_avg GDPPC")
+tmap_arrange(lag_gdppc, w_avg_gdppc, asp=1, ncol=2)
+```
+
+### 8.4 Spatial window sum
+
+The spatial window sum is the counter part of the window average, but without using row-standardised weights.
+
+To add the diagonal element to the neighbour list, we just need to use `include.self()` from **spdep**.
+
+```{r}
+wm_qs <- include.self(wm_q)
+wm_qs
+```
+
+We will assign binary weights to the neighbour structure that includes the diagonal element.
+
+```{r}
+b_weights <- lapply(wm_qs, function(x) 0*x + 1)
+b_weights[1]
+```
+
+County 1 has six neighbours instead of five.
+
+We use `nb2listw()` and `glist()` to explicitly assign weight values.
+
+```{r}
+b_weights2 <- nb2listw(wm_qs, 
+                       glist = b_weights, 
+                       style = "B")
+b_weights2
+```
+
+We then compute the lag variable with `lag.listw()`.
+
+```{r}
+w_sum_gdppc <- list(hunan$NAME_3, lag.listw(b_weights2, hunan$GDPPC))
+w_sum_gdppc
+```
+Next, we will convert the lag variable listw object into a data.frame by using `as.data.frame()`.
+
+```{r}
+w_sum_gdppc.res <- as.data.frame(w_sum_gdppc)
+colnames(w_sum_gdppc.res) <- c("NAME_3", "w_sum GDPPC")
+```
+
+We then append the values of lag GDPPC and Spatial window average.
+
+```{r}
+hunan <- left_join(hunan, w_sum_gdppc.res)
+```
+
+```{r}
+hunan %>%
+  select("County", "lag_sum GDPPC", "w_sum GDPPC") %>%
+  kable()
+```
+
+Lastly, `qtm()` of **tmap** package is used to plot the lag_sum GDPPC and w_sum_gdppc maps next to each other for quick comparison.
+
+```{r}
+lag_sum_gdppc <- qtm(hunan, "lag_sum GDPPC")
+w_sum_gdppc <- qtm(hunan, "w_sum GDPPC")
+tmap_arrange(lag_sum_gdppc, w_sum_gdppc, asp = 1, ncol = 2)
+```
