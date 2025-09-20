@@ -13,3 +13,6 @@ data/
 
 # Ignore all csv files
 *.csv
+
+# Ignore all tmp files
+*.tmp

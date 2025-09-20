@@ -1,0 +1,102 @@
+---
+title: "4: Using GWmodel using sp dataframe"
+author: "Emma Chew En Chin"
+date: "Sep 20, 2025"
+date-modified: "last-modified"
+format: html
+execute: 
+  echo: true
+  eval: true
+  warning: false
+  freeze: true
+---
+
+## 1 Overview
+
+Using GWmodel using sp dataframe
+
+## 2 Loading the Data
+
+### 2.1 Importing packages into R environment
+
+```{r}
+pacman::p_load(sf, ggstatsplot, tmap, tidyverse, knitr, GWmodel)
+```
+
+### 2.2 Importing shapefile into R environment
+
+```{r}
+hunan_sf <- st_read(dsn = "data/geospatial", 
+                 layer = "Hunan")
+```
+
+### 2.3 Importing csv into R environment
+
+```{r}
+hunan2012 <- read_csv("data/aspatial/Hunan_2012.csv")
+```
+
+Left Join Hunan and Hunan 2012 dataset
+
+```{r}
+hunan_sf <- left_join(hunan_sf, hunan2012) %>%
+  select(1:3, 7, 15, 16, 21, 32)
+```
+
+Convert to sp
+
+```{r}
+hunan_sp <- hunan_sf %>%
+  as_Spatial()
+```
+
+### 3 Geographically Weighted Summary Statistics
+
+:::: panel_tabset
+::: {style="font-size: 1.20em"}
+### Cross Validation
+
+```{r}
+bw_CV <- bw.gwr(GDPPC ~ 1,
+                data = hunan_sp,
+                approach = "CV",
+                adaptive = FALSE,
+                kernel = "bisquare",
+                longlat = T)
+```
+
+### AIC
+
+```{r}
+bw_AIC <- bw.gwr(GDPPC ~ 1,
+                data = hunan_sp,
+                approach = "AIC",
+                adaptive = FALSE,
+                kernel = "bisquare",
+                longlat = T)
+```
+
+### GWSS
+
+```{r}
+gwstat <- gwss(data = hunan_sp,
+               vars = "GDPPC",
+               bw = bw_AIC,
+               kernel = "bisquare",
+               adaptive = FALSE,
+              longlat = T)
+```
+:::
+
+### 3.1 Extract SDF Data table from GWSS object output
+
+```{r}
+gwstat_df <- as.data.frame(gwstat$SDF)
+```
+
+`cbind()` joins two tables with same row sequence without an ID (join) column.
+
+```{r}
+hunan_gstat <- cbind(hunan_sf, gwstat_df)
+```
+

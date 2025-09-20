@@ -34,17 +34,17 @@ First of all, we utilise the following geospatial and aspatial data as follows:
 
 The objectives of this study are listed as below:
 
-+------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------+
-| Objective                                                                                                        | Methodology                                                                                                                                            |
-+==================================================================================================================+========================================================================================================================================================+
-| 1.  Identify the spatial distribution of points of business entities and whether there are clusters              | Computing Kernel Density Estimation (KDE) using adaptive bandwidth, to factor in unevenly distributed business entity point patterns across Singapore. |
-+------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------+
-| 2.  Identify the spatio-temporal distribution of points of business entities, and understand seasonality trends. |                                                                                                                                                        |
-+------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------+
-| 3.  Identify                                                                                                     |                                                                                                                                                        |
-+------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------+
-|                                                                                                                  |                                                                                                                                                        |
-+------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------+
++----------------------------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| # Objective                                                                                                                                        | # Methodology                                                                                                                                                                                                                                |
+|                                                                                                                                                    |                                                                                                                                                                                                                                              |
+| 1.  Identify the spatial distribution of points of business entities and whether there are clusters                                                | Computing **Kernel Density Estimation (KDE)** using adaptive bandwidth, to factor in unevenly distributed business entity point patterns across Singapore.                                                                                   |
+|                                                                                                                                                    |                                                                                                                                                                                                                                              |
+|                                                                                                                                                    | Discover if business entity points are randomly distributed or clustered across Singapore, using the **L(r) function** to analyse if the points are geographically concentrated or dispersed, or displays Complete Spatial Randomness (CSR). |
++----------------------------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| 2.  Identify the spatio-temporal distribution of points of business entities, and understand seasonality trends.                                   | Visualise the geographic distribution of business entity points per month between July 2024 - June 2025 for **spatio-temporal** trend analysis.                                                                                              |
++----------------------------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| 3.  Find out the best areas for the Tech Consultancy firm, based on distance to potential clients, competitor companies and to MRT exit locations. | Calculating a **holistic score** to identify the area within Singapore that is the most suitable for the Tech Consultancy Firm's office.                                                                                                     |
++----------------------------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 
 ## 2 Preparing Data for Analysis
 
@@ -53,6 +53,7 @@ The objectives of this study are listed as below:
 The following R packages will be used for our geospatial analysis.
 
 ```{r}
+#| echo: false
 pacman::p_load(sf, tmap, spatstat, tidyverse, httr, rvest)
 ```
 
@@ -72,6 +73,7 @@ pacman::p_load(sf, tmap, spatstat, tidyverse, httr, rvest)
 Data from ACRA is merged into one single dataframe.
 
 ```{r}
+#| eval: false
 folder_path <- "data/aspatial/acra"
 file_list <- list.files(path = folder_path,
                         pattern = "^ACRA*.*\\.csv$", 
@@ -81,20 +83,22 @@ acra_data <- file_list %>%
 ```
 
 ```{r}
+#| eval: false
 write_rds(acra_data,
           "data/rds/acra_data.rds")
 ```
 
-Filtering ACRA data to companies that were registered between 2024 and 2025.
+Creating separate .rds files for each business entity type, of companies that were registered between July 2024 to June 2025.
 
 Selected business types are: - **62011:** Developing software and applications - **62021:** Information technology consultancy (except cybersecurity) - **58202:** Software publishing (software/applications) (non-games)
 
-```{r}
-my_ssic_codes <- c(62011, 62021, 58202)
+#### 2.2.1 Creating RDS file for entities under 'Developing software and applications (62011)'
 
-biz_codes <- acra_data %>%
+```{r}
+#| eval: false
+biz_dev <- acra_data %>%
   select(1:24) %>%
-  filter(primary_ssic_code %in% my_ssic_codes) %>%
+  filter(primary_ssic_code == 62011) %>%
   rename(date = registration_incorporation_date) %>%
   mutate(date = as.Date(date),
          YEAR = year(date),
@@ -103,18 +107,19 @@ biz_codes <- acra_data %>%
                             label = TRUE,
                             abbr = TRUE)) %>%
   # if the postal code is 5 digits, add 0 in front
-  filter(YEAR %in% c(2024, 2025)) %>%
   mutate(
-    postal_code = str_pad(postal_code, width = 6, side = "left", pad = "0")
-)
+    postal_code = str_pad(postal_code, 
+                    
+    width = 6, side = "left", pad = "0")) %>% 
+  # Filter for July 2024 to June 2025
+  filter((YEAR == 2024 & MONTH_NUM >= 7) | (YEAR == 2025 & MONTH_NUM <= 6))
 ```
-
-### 2.3 Geocoding using OneMap
 
 Extract unique postal code and use [OneMap](https://onemap.gov.sg) to do reverse geocoding and retrieve the coordinates of the entity location.
 
 ```{r}
-postcodes <- unique(biz_codes$postal_code)
+#| eval: false
+biz_dev_postcodes <- unique(biz_dev$postal_code)
 
 url <- "https://onemap.gov.sg/api/common/elastic/search"
 
@@ -122,7 +127,7 @@ url <- "https://onemap.gov.sg/api/common/elastic/search"
 found <- data.frame()
 not_found <- data.frame(postcode = character())
 
-for (pc in postcodes) {
+for (pc in biz_dev_postcodes) {
   query <- list(
     searchVal = pc,
     returnGeom = "Y",
@@ -134,80 +139,348 @@ for (pc in postcodes) {
   json <- content(res)
   
   if (json$found != 0) {
-    df <- as.data.frame(json$results, stringsAsFactors = FALSE)
-    df$input_postcode <- pc 
-    found <- bind_rows(found, df)
+    results <- bind_rows(lapply(json$results, as.data.frame))
+    results$input_postcode <- pc 
+    found <- bind_rows(found, results)
   } else {
     not_found <- bind_rows(not_found, data.frame(postcode = pc))
   }
+  Sys.sleep(0.1)
 }
-
-print("Postal codes that were not found:")
-print(not_found$postcode)
 ```
 
-Remove postal codes that are not geocoded
+Drop postcodes that are not geocoded, append the location data and saving the data as an RDS file.
 
 ```{r}
-biz_codes_clean <- biz_codes %>%
+#| eval: false
+biz_dev_clean <- biz_dev %>%
   filter(!postal_code %in% not_found$postcode)
 
 # Optional: Check the results
-cat("Original biz_codes rows:", nrow(biz_codes), "\n")
-cat("Cleaned biz_codes rows:", nrow(biz_codes_clean), "\n")
-cat("Number of postal codes removed:", nrow(biz_codes) - nrow(biz_codes_clean), "\n")
+cat("Original biz_dev rows:", nrow(biz_dev), "\n")
+cat("Cleaned biz_devs rows:", nrow(biz_dev_clean), "\n")
+cat("Number of postal codes removed:", nrow(biz_dev) - nrow(biz_dev_clean), "\n")
 ```
 
-Append location information to dataframe
+Append the location data and saving the data as an RDS file.
 
 ```{r}
-biz_codes_joined = (biz_codes_clean %>%
-  left_join(found, 
-            by = c('postal_code' = 'POSTAL')))
-```
+#| eval: false
+biz_dev_joined <- biz_dev_clean %>%
+  left_join(found, by = c('postal_code' = 'POSTAL'), relationship = "many-to-many") %>%
+  # Add jitter to avoid overlapping points
+  group_by(postal_code) %>%
+  mutate(
+    jitter_applied = n() > 1,  # Flag if jitter was applied
+    X = ifelse(jitter_applied, jitter(as.numeric(X)), as.numeric(X)),
+    Y = ifelse(jitter_applied, jitter(as.numeric(Y)), as.numeric(Y))
+  ) %>%
+  ungroup()
 
-Save the file as an RDS file
-
-```{r}
-saveRDS(biz_codes_joined, file = "data/rds/biz_codes_joined.rds")
+saveRDS(biz_dev_joined, file = "data/rds/biz_dev_joined.rds")
 ```
 
 Loading the data and using X & Y coordinates as SVY21 projection
 
 ```{r}
-biz_fixed <- biz_codes_joined %>%
+#| eval: false
+biz_dev_fixed <- biz_dev_joined %>%
   mutate(across(where(~is.factor(.) && nlevels(.) < 2), as.character))
 
-biz_sf <- st_as_sf(biz_fixed,
+biz_dev_sf <- st_as_sf(biz_dev_fixed,
                          coords = c("X", "Y"), 
                          crs = 3414)
 
-class(biz_sf)
-plot(st_geometry(biz_sf))
+class(biz_dev_sf)
+plot(st_geometry(biz_dev_sf))
 ```
 
-### 2.4 Import Map data
+#### 2.2.2 Creating RDS file for entities under 'Information technology consultancy (except cybersecurity)(62021)'
 
 ```{r}
+#| eval: false
+biz_it <- acra_data %>%
+  select(1:24) %>%
+  filter(primary_ssic_code == 62021) %>%
+  rename(date = registration_incorporation_date) %>%
+  mutate(date = as.Date(date),
+         YEAR = year(date),
+         MONTH_NUM = month(date),
+         MONTH_ABBR = month(date,
+                            label = TRUE,
+                            abbr = TRUE)) %>%
+  # if the postal code is 5 digits, add 0 in front
+  mutate(
+    postal_code = str_pad(postal_code, 
+                    
+    width = 6, side = "left", pad = "0")) %>% 
+  # Filter for July 2024 to June 2025
+  filter((YEAR == 2024 & MONTH_NUM >= 7) | (YEAR == 2025 & MONTH_NUM <= 6))
+```
 
+Extract unique postal code and use [OneMap](https://onemap.gov.sg) to do reverse geocoding and retrieve the coordinates of the entity location.
+
+```{r}
+#| eval: false
+biz_it_postcodes <- unique(biz_it$postal_code)
+
+url <- "https://onemap.gov.sg/api/common/elastic/search"
+
+# Found: geocoded, Not found: cannot be geocoded (e.g.) New development area or inaccurate postal code
+found <- data.frame()
+not_found <- data.frame(postcode = character())
+
+for (pc in biz_it_postcodes) {
+  query <- list(
+    searchVal = pc,
+    returnGeom = "Y",
+    getAddrDetails = "Y",
+    pageNum = "1"
+  )
+  
+  res <- GET(url, query = query)
+  json <- content(res)
+  
+  if (json$found != 0) {
+    results <- bind_rows(lapply(json$results, as.data.frame))
+    results$input_postcode <- pc 
+    found <- bind_rows(found, results)
+  } else {
+    not_found <- bind_rows(not_found, data.frame(postcode = pc))
+  }
+  Sys.sleep(0.1)
+}
+```
+
+Drop postcodes that are not geocoded, append the location data and saving the data as an RDS file.
+
+```{r}
+#| eval: false
+biz_it_clean <- biz_it %>%
+  filter(!postal_code %in% not_found$postcode)
+
+# Optional: Check the results
+cat("Original biz_it rows:", nrow(biz_it), "\n")
+cat("Cleaned biz_it rows:", nrow(biz_it_clean), "\n")
+cat("Number of postal codes removed:", nrow(biz_it) - nrow(biz_it_clean), "\n")
+```
+
+Append the location data and saving the data as an RDS file.
+
+```{r}
+#| eval: false
+biz_it_joined <- biz_it_clean %>%
+  left_join(found, by = c('postal_code' = 'POSTAL'), relationship = "many-to-many") %>%
+  # Add jitter to avoid overlapping points
+  group_by(postal_code) %>%
+  mutate(
+    jitter_applied = n() > 1,  # Flag if jitter was applied
+    X = ifelse(jitter_applied, jitter(as.numeric(X)), as.numeric(X)),
+    Y = ifelse(jitter_applied, jitter(as.numeric(Y)), as.numeric(Y))
+  ) %>%
+  ungroup()
+
+saveRDS(biz_it_joined, file = "data/rds/biz_it_joined.rds")
+```
+
+Loading the data and using X & Y coordinates as SVY21 projection
+
+```{r}
+#| eval: false
+biz_it_fixed <- biz_it_joined %>%
+  mutate(across(where(~is.factor(.) && nlevels(.) < 2), as.character))
+
+biz_it_sf <- st_as_sf(biz_it_fixed,
+                         coords = c("X", "Y"), 
+                         crs = 3414)
+
+class(biz_it_sf)
+plot(st_geometry(biz_it_sf))
+```
+
+#### 2.2.3 Creating RDS file for entities under 'Software publishing (software/applications) (non-games) (58202)'
+
+```{r}
+#| eval: false
+biz_pub <- acra_data %>%
+  select(1:24) %>%
+  filter(primary_ssic_code == 58202) %>%
+  rename(date = registration_incorporation_date) %>%
+  mutate(date = as.Date(date),
+         YEAR = year(date),
+         MONTH_NUM = month(date),
+         MONTH_ABBR = month(date,
+                            label = TRUE,
+                            abbr = TRUE)) %>%
+  # if the postal code is 5 digits, add 0 in front
+  mutate(
+    postal_code = str_pad(postal_code, 
+                    
+    width = 6, side = "left", pad = "0")) %>% 
+  # Filter for July 2024 to June 2025
+  filter((YEAR == 2024 & MONTH_NUM >= 7) | (YEAR == 2025 & MONTH_NUM <= 6))
+```
+
+Extract unique postal code and use [OneMap](https://onemap.gov.sg) to do reverse geocoding and retrieve the coordinates of the entity location.
+
+```{r}
+#| eval: false
+biz_pub_postcodes <- unique(biz_pub$postal_code)
+
+url <- "https://onemap.gov.sg/api/common/elastic/search"
+
+# Found: geocoded, Not found: cannot be geocoded (e.g.) New development area or inaccurate postal code
+found <- data.frame()
+not_found <- data.frame(postcode = character())
+
+for (pc in biz_pub_postcodes) {
+  query <- list(
+    searchVal = pc,
+    returnGeom = "Y",
+    getAddrDetails = "Y",
+    pageNum = "1"
+  )
+  
+  res <- GET(url, query = query)
+  json <- content(res)
+  
+  if (json$found != 0) {
+    results <- bind_rows(lapply(json$results, as.data.frame))
+    results$input_postcode <- pc 
+    found <- bind_rows(found, results)
+  } else {
+    not_found <- bind_rows(not_found, data.frame(postcode = pc))
+  }
+  Sys.sleep(0.1)
+}
+```
+
+Drop postcodes that are not geocoded, append the location data and saving the data as an RDS file.
+
+```{r}
+#| eval: false
+biz_pub_clean <- biz_pub %>%
+  filter(!postal_code %in% not_found$postcode)
+
+# Optional: Check the results
+cat("Original biz_pub rows:", nrow(biz_pub), "\n")
+cat("Cleaned biz_pub rows:", nrow(biz_pub_clean), "\n")
+cat("Number of postal codes removed:", nrow(biz_pub) - nrow(biz_pub_clean), "\n")
+```
+
+Append the location data and saving the data as an RDS file.
+
+```{r}
+#| eval: false
+biz_pub_joined <- biz_pub_clean %>%
+  left_join(found, by = c('postal_code' = 'POSTAL'), relationship = "many-to-many") %>%
+  # Add jitter to avoid overlapping points
+  group_by(postal_code) %>%
+  mutate(
+    jitter_applied = n() > 1,  # Flag if jitter was applied
+    X = ifelse(jitter_applied, jitter(as.numeric(X)), as.numeric(X)),
+    Y = ifelse(jitter_applied, jitter(as.numeric(Y)), as.numeric(Y))
+  ) %>%
+  ungroup()
+
+saveRDS(biz_pub_joined, file = "data/rds/biz_pub_joined.rds")
+```
+
+Loading the data and using X & Y coordinates as SVY21 projection
+
+```{r}
+#| eval: false
+biz_pub_fixed <- biz_pub_joined %>%
+  mutate(across(where(~is.factor(.) && nlevels(.) < 2), as.character))
+
+biz_pub_sf <- st_as_sf(biz_pub_fixed,
+                         coords = c("X", "Y"), 
+                         crs = 3414)
+
+class(biz_pub_sf)
+plot(st_geometry(biz_pub_sf))
+```
+
+### 2.3 Import Shapefile Polygon data
+
+```{r}
+#| eval: false
+mpsz_sf <- st_read("data/geospatial/MasterPlan2019SubzoneBoundaryNoSeaKML.kml") %>%
+  st_zm(drop = TRUE, what = "ZM") %>% st_transform(crs = 3414)
 ```
 
 ```{r}
+#| eval: false
+extract_kml_field <- function(html_text, field_name) {
+  if (is.na(html_text) || html_text == "") return(NA_character_)
+  
+  page <- read_html(html_text)
+  rows <- page %>% html_elements("tr")
+  
+  value <- rows %>%
+    keep(~ html_text2(html_element(.x, "th")) == field_name) %>%
+    html_element("td") %>%
+    html_text2()
+  
+  if (length(value) == 0) NA_character_ else value
+}
 ```
 
 ```{r}
+#| eval: false
+mpsz_sf <- mpsz_sf %>%
+  mutate(
+    REGION_N = map_chr(Description, extract_kml_field, "REGION_N"),
+    PLN_AREA_N = map_chr(Description, extract_kml_field, "PLN_AREA_N"),
+    SUBZONE_N = map_chr(Description, extract_kml_field, "SUBZONE_N"),
+    SUBZONE_C = map_chr(Description, extract_kml_field, "SUBZONE_C")
+  ) %>%
+  select(-Name, -Description) %>%
+  relocate(geometry, .after = last_col())
 ```
 
 ```{r}
+#| eval: false
+mpsz_cl <- mpsz_sf %>%
+  filter(SUBZONE_N != "SOUTHERN GROUP",
+         PLN_AREA_N != "WESTERN ISLANDS",
+         PLN_AREA_N != "NORTH-EASTERN ISLANDS")
 ```
 
 ```{r}
+#| eval: false
+write_rds(mpsz_cl, 
+          "data/mpsz_cl.rds")
+```
+
+### 2.4 Import MRT location data
+
+```{r}
+#| eval: false
+mrt <- st_read("data/geospatial/LTAMRTStationExitKML.kml") %>%
+  st_transform(crs = 3414)
 ```
 
 ```{r}
+#| eval: false
+plot(st_geometry(mpsz_cl), col = "grey")
+plot(st_geometry(mrt), add = TRUE, pch = 19, col = "black", cex = 0.6)
 ```
 
+Save MRT data as RDS file.
+
 ```{r}
+#| eval: false
+saveRDS(mrt, file = "data/rds/mrt_data.rds")
+```
+
+## 3 
+
+
+### Read biz_sf dataframe
+
+```{r}
+biz_sf <- read_rds("data/rds/biz_dev_joined.rds")
 ```
 
 ## References
