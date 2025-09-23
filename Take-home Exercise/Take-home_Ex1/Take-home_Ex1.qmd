@@ -17,16 +17,20 @@ Studies have shown that location is important in business competition, as busine
 
 In this report, we will utilise business entity location data from the Accounting and Corporate Regulatory Authority ([ACRA](https://data.gov.sg/collections/2/view)) of Singapore, to examine the location trends of clients and competitors in **Software & Applications**, **Software Publishing** and **Information Technology Consultancies**, in order to understand potential locations to situate a hypothetical Tech Consultancy Firm.
 
+The primary subzones in Singapore that will be covered for this analysis is the Central Business District (CBD) consisting of subzones:
+
+-   **Downtown Core Area** (Downtown Core, Outram)
+-   **Marina Bay Precinct** (Marina South, Marina East, Singapore River)
+
 ### 1.1 Data Sets
 
-First of all, we utilise the following geospatial and aspatial data as follows:
+First of all, we utilise the following geospatial data as follows:
 
 **Geospatial Data:**
 
 -   Master Plan 2014 Subzone Boundary (Web) from [data.gov.sg](https://data.gov.sg/)
--   LTA MRT Station Exit (KML) from [data.gov.sg](https://data.gov.sg/datasets/d_f820139ee3b0865b5512cf61ab7d1122/view)
 
-**Aspatial Data:**
+-   LTA MRT Station Exit (KML) from [data.gov.sg](https://data.gov.sg/datasets/d_f820139ee3b0865b5512cf61ab7d1122/view)
 
 -   ACRA Information on Corporate EntitiesAccounting from [data.gov.sg](https://data.gov.sg/collections/2/view)
 
@@ -34,17 +38,17 @@ First of all, we utilise the following geospatial and aspatial data as follows:
 
 The objectives of this study are listed as below:
 
-+----------------------------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| # Objective                                                                                                                                        | # Methodology                                                                                                                                                                                                                                |
-|                                                                                                                                                    |                                                                                                                                                                                                                                              |
-| 1.  Identify the spatial distribution of points of business entities and whether there are clusters                                                | Computing **Kernel Density Estimation (KDE)** using adaptive bandwidth, to factor in unevenly distributed business entity point patterns across Singapore.                                                                                   |
-|                                                                                                                                                    |                                                                                                                                                                                                                                              |
-|                                                                                                                                                    | Discover if business entity points are randomly distributed or clustered across Singapore, using the **L(r) function** to analyse if the points are geographically concentrated or dispersed, or displays Complete Spatial Randomness (CSR). |
-+----------------------------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| 2.  Identify the spatio-temporal distribution of points of business entities, and understand seasonality trends.                                   | Visualise the geographic distribution of business entity points per month between July 2024 - June 2025 for **spatio-temporal** trend analysis.                                                                                              |
-+----------------------------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| 3.  Find out the best areas for the Tech Consultancy firm, based on distance to potential clients, competitor companies and to MRT exit locations. | Calculating a **holistic score** to identify the area within Singapore that is the most suitable for the Tech Consultancy Firm's office.                                                                                                     |
-+----------------------------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
++----------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| # Objective                                                                                                                                        | # Methodology                                                                                                                                                                                                                                    |
+|                                                                                                                                                    |                                                                                                                                                                                                                                                  |
+| 1.  Identify the spatial distribution of points of business entities and whether there are clusters                                                | Computing **Kernel Density Estimation (KDE)** using adaptive bandwidth, to factor in unevenly distributed business entity point patterns across the CBD area..                                                                                   |
+|                                                                                                                                                    |                                                                                                                                                                                                                                                  |
+|                                                                                                                                                    | Discover if business entity points are randomly distributed or clustered across the CBD area., using the **L(r) function** to analyse if the points are geographically concentrated or dispersed, or displays Complete Spatial Randomness (CSR). |
++----------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| 2.  Identify the spatio-temporal distribution of points of business entities, and understand seasonality trends.                                   | Visualise the geographic distribution of business entity points per month between July 2024 - June 2025 for **spatio-temporal** trend analysis.                                                                                                  |
++----------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| 3.  Find out the best areas for the Tech Consultancy firm, based on distance to potential clients, competitor companies and to MRT exit locations. | Calculating a **holistic score** to identify the area within the CBD area. that is the most suitable for the Tech Consultancy Firm's office.                                                                                                     |
++----------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 
 ## 2 Preparing Data for Analysis
 
@@ -90,7 +94,11 @@ write_rds(acra_data,
 
 Creating separate .rds files for each business entity type, of companies that were registered between July 2024 to June 2025.
 
-Selected business types are: - **62011:** Developing software and applications - **62021:** Information technology consultancy (except cybersecurity) - **58202:** Software publishing (software/applications) (non-games)
+Selected business types are:
+
+-   **62011:** Developing software and applications
+-   **62021:** Information technology consultancy (except cybersecurity)
+-   **58202:** Software publishing (software/applications) (non-games)
 
 #### 2.2.1 Creating RDS file for entities under 'Developing software and applications (62011)'
 
@@ -443,14 +451,20 @@ mpsz_sf <- mpsz_sf %>%
 #| eval: false
 mpsz_cl <- mpsz_sf %>%
   filter(SUBZONE_N != "SOUTHERN GROUP",
-         PLN_AREA_N != "WESTERN ISLANDS",
+         PLN_AREA_N != "WESTERN ISLANDS", 
          PLN_AREA_N != "NORTH-EASTERN ISLANDS")
+
+cbd_areas <- mpsz_cl %>%
+  filter(PLN_AREA_N %in% c("DOWNTOWN CORE", "MARINA SOUTH", "MARINA EAST", "ROCHOR", "OUTRAM", "SINGAPORE RIVER"))
 ```
 
 ```{r}
 #| eval: false
 write_rds(mpsz_cl, 
-          "data/mpsz_cl.rds")
+          "data/rds/mpsz_cl.rds")
+          
+write_rds(cbd_areas, 
+          "data/rds/cbd_areas.rds")
 ```
 
 ### 2.4 Import MRT location data
@@ -461,12 +475,6 @@ mrt <- st_read("data/geospatial/LTAMRTStationExitKML.kml") %>%
   st_transform(crs = 3414)
 ```
 
-```{r}
-#| eval: false
-plot(st_geometry(mpsz_cl), col = "grey")
-plot(st_geometry(mrt), add = TRUE, pch = 19, col = "black", cex = 0.6)
-```
-
 Save MRT data as RDS file.
 
 ```{r}
@@ -474,13 +482,259 @@ Save MRT data as RDS file.
 saveRDS(mrt, file = "data/rds/mrt_data.rds")
 ```
 
-## 3 
+## 3 Data Processing
 
+### 3.1 Conversion of sf dataframes to ppp class
 
-### Read biz_sf dataframe
+After importing and creating RDS files for our datasets, they will be converted to **ppp** object form.
 
 ```{r}
-biz_sf <- read_rds("data/rds/biz_dev_joined.rds")
+# Read RDS files
+dev_sf <- read_rds("data/rds/biz_dev_joined.rds")
+IT_sf <- read_rds("data/rds/biz_IT_joined.rds")
+pub_sf <- read_rds("data/rds/biz_pub_joined.rds")
+mrt_sf <- read_rds("data/rds/mrt_data.rds")
+cbd_sf <- read_rds("data/rds/cbd_areas.rds")
+
+# Convert to sf objects
+dev_sf <- st_as_sf(dev_sf, coords = c("X", "Y"), crs = 3414)
+IT_sf <- st_as_sf(IT_sf, coords = c("X", "Y"), crs = 3414)
+pub_sf <- st_as_sf(pub_sf, coords = c("X", "Y"), crs = 3414)
+mrt_sf <- st_as_sf(mrt_sf, coords = c("X", "Y"), crs = 3414)
+cbd_sf <- st_as_sf(cbd_sf, coords = c("X", "Y"), crs = 3414)
+
+# Ensure same CRS for spatial operations
+cbd_sf <- st_transform(cbd_sf, st_crs(dev_sf))
+
+# Filter business data to include only points within CBD area
+dev_cbd <- dev_sf[cbd_sf, ]  # Spatial subset
+IT_cbd <- IT_sf[cbd_sf, ]
+pub_cbd <- pub_sf[cbd_sf, ]
+mrt_cbd <- mrt_sf[cbd_sf, ]
+
+# Convert study area into owin object
+cbd_owin <- as.owin(cbd_sf)
+
+# Apply ppp conversion
+dev_ppp <- as.ppp(st_geometry(dev_cbd), W = cbd_owin)
+IT_ppp <- as.ppp(st_geometry(IT_cbd), W = cbd_owin)
+pub_ppp <- as.ppp(st_geometry(pub_cbd), W = cbd_owin)
+mrt_ppp <- as.ppp(st_geometry(mrt_cbd), W = cbd_owin)
+
+# Check class
+class(dev_ppp)
+class(IT_ppp)
+class(pub_ppp)
+class(mrt_ppp)
+class(cbd_owin)
+```
+
+### 3.2 Combining ppp object with owin object
+
+```{r}
+dev_ppp = dev_ppp[cbd_owin]
+IT_ppp = IT_ppp[cbd_owin]
+pub_ppp = pub_ppp[cbd_owin]
+mrt_ppp = mrt_ppp[cbd_owin]
+```
+
+## 4 Objective 1: Discover if business entity points are randomly distributed or clustered across the CBD area
+
+1.  Identify the spatial distribution of points of business entities and whether there are clusters Computing **Kernel Density Estimation (KDE)** using adaptive bandwidth, to factor in unevenly distributed business entity point patterns across the CBD area.
+2.  Discover if business entity points are randomly distributed or clustered across CBD area., using the **L(r) function** to analyse if the points are geographically concentrated or dispersed, or displays Complete Spatial Randomness (CSR).
+
+### Spatial Point Pattern Analysis by Business Type {.tabset}
+
+First, we employ **Kernel Density Estimation (KDE)** to visualise and analyse first-order spatial point patterns, providing insights into the intensity distribution of business entities across the CBD. To account for potential spatial heterogeneity in point patterns, we implement an adaptive bandwidth selection method using Diggle's approach (`bw.diggle`). This method applies a Gaussian kernel smoother that dynamically adjusts to local point densities, enabling more accurate identification of clustering behavior and hotspot regions within the study area.
+
+Then, **Clark-Evan's test** is conducted to statistically confirm clustering significance, testing against complete spatial randomness (CSR) using nearest-neighbor distance analysis. This will be performed for all 3 business types at a 95% confidence interval.
+
+The test hypotheses are: **H0**: The distribution of business entities are randomly distributed. **H1**: The distribution of business entities are not randomly distributed.
+
+#### Software and Applications Development
+
+##### 4.1.1 KDE for 'Developing software and applications (62011)'
+
+As there are subtle density differences, logarithmic transformation is applied to enhance contrasting distances between points.
+
+```{r}
+#| echo: false
+dev_ppp_km <- rescale.ppp(
+  dev_ppp, 1000, "km")
+
+kde_dev_diggle <- density(
+  dev_ppp_km,
+  sigma=bw.diggle,
+  edge=TRUE,
+  kernel="gaussian") 
+
+# Apply log transformation to enhance contrasts
+kde_dev_log <- kde_dev_diggle
+kde_dev_log$v <- log1p(kde_dev_diggle$v)  # log(1+x) to handle zeros
+
+# Group by Planning Area
+cbd_sf_union <- cbd_sf |>
+  dplyr::group_by(PLN_AREA_N) |>
+  dplyr::summarise()
+
+cbd_sf_labels <- st_point_on_surface(cbd_sf_union)
+coords_km <- st_coordinates(cbd_sf_labels) / 1000
+
+# Plot KDE + title
+plot(kde_dev_log, ribbon = TRUE)
+title("Software and Applications Development Companies")
+
+# Add labels
+text(coords_km,
+     labels = cbd_sf_labels$PLN_AREA_N,  # change to your planning area field
+     cex = 0.5, col = "white", font = 2)
+```
+
+From the plotted KDE map, we can see a major cluster in the Downtown Core - Outram area, and another more dispersed cluster at Rochor area.
+
+##### 4.1.2 Clark-Evan's Test for 'Developing software and applications (62011)'
+
+```{r}
+#| echo: false
+clarkevans.test(dev_ppp,
+                correction="none",
+                clipregion="sg_owin",
+                alternative=c("clustered"),
+                method="MonteCarlo",
+                nsim=99)
+```
+
+From the results, we can conclude at a 95% statistical significance level that we can reject the null hypothesis that the distribution of Software and Applications Development Companies are randomly distributed.
+
+#### Software Publishing Companies
+
+##### 4.1.3 KDE for 'Software publishing (software/applications) (non-games) (58202)'
+
+```{r}
+#| echo: false
+pub_ppp_km <- rescale.ppp(
+  pub_ppp, 1000, "km")
+
+kde_pub_diggle <- density(
+  pub_ppp_km,
+  sigma=bw.diggle,
+  edge=TRUE,
+  kernel="gaussian") 
+
+# Apply log transformation to enhance contrasts
+kde_pub_log <- kde_pub_diggle
+kde_pub_log$v <- log1p(kde_pub_diggle$v)  # log(1+x) to handle zeros
+
+# Group by Planning Area
+cbd_sf_union <- cbd_sf |>
+  dplyr::group_by(PLN_AREA_N) |>
+  dplyr::summarise()
+
+cbd_sf_labels <- st_point_on_surface(cbd_sf_union)
+coords_km <- st_coordinates(cbd_sf_labels) / 1000
+
+# Plot KDE + title
+plot(kde_pub_log, ribbon = TRUE)
+title("Software Publishing Companies")
+
+# Add labels
+text(coords_km,
+     labels = cbd_sf_labels$PLN_AREA_N,  # change to your planning area field
+     cex = 0.5, col = "white", font = 2)
+```
+
+From the plotted KDE map, we can observe that smaller clusters may exist around the Downtown Core - Outram area, although they are sparse
+
+##### 4.1.4 Clark-Evan's Test for 'Software publishing (software/applications) (non-games) (58202)'
+
+```{r}
+#| echo: false
+clarkevans.test(pub_ppp,
+                correction="none",
+                clipregion="sg_owin",
+                alternative=c("clustered"),
+                method="MonteCarlo",
+                nsim=99)
+```
+
+#### IT Consultancy Companies
+
+From the results, we can conclude at a 95% statistical significance level that we can reject the null hypothesis that the distribution of Software Publishing Companies are randomly distributed.
+
+##### 4.1.5 KDE for 'Information technology consultancy (except cybersecurity)(62021)'
+
+```{r}
+#| echo: false
+IT_ppp_km <- rescale.ppp(
+  IT_ppp, 1000, "km")
+
+kde_IT_diggle <- density(
+  IT_ppp_km,
+  sigma=bw.diggle,
+  edge=TRUE,
+  kernel="gaussian") 
+
+# Apply log transformation to enhance contrasts
+kde_IT_log <- kde_IT_diggle
+kde_IT_log$v <- log1p(kde_IT_diggle$v)  # log(1+x) to handle zeros
+
+# Group by Planning Area
+cbd_sf_union <- cbd_sf |>
+  dplyr::group_by(PLN_AREA_N) |>
+  dplyr::summarise()
+
+cbd_sf_labels <- st_point_on_surface(cbd_sf_union)
+coords_km <- st_coordinates(cbd_sf_labels) / 1000
+
+# Plot KDE + title
+plot(kde_IT_log, ribbon = TRUE)
+title("IT Consulting Companies")
+
+# Add labels
+text(coords_km,
+     labels = cbd_sf_labels$PLN_AREA_N,  # change to your planning area field
+     cex = 0.5, col = "white", font = 2)
+```
+
+From the plotted KDE map, we can see a major cluster in the Downtown Core - Outram area.
+
+##### 4.1.6 Clark-Evan's Test for 'Information technology consultancy (except cybersecurity)(62021)'
+
+```{r}
+#| echo: false
+clarkevans.test(IT_ppp,
+                correction="none",
+                clipregion="sg_owin",
+                alternative=c("clustered"),
+                method="MonteCarlo",
+                nsim=99)
+```
+
+From the results, we can conclude at a 95% statistical significance level that we can reject the null hypothesis that the distribution of IT Consulting Companies are randomly distributed.
+
+### Spatial Scale Dependency
+
+**L-function** is used to reveal how clustering behaviour varies across different spatial scales, identifying the specific distances at which clustering is most pronounced. This approach helps distinguish between localised tight clusters and broader agglomerations, providing a more nuanced understanding of the spatial organisation of business entities within the CBD area.
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
 ```
 
 ## References
