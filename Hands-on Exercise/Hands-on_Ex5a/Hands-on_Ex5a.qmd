@@ -1,0 +1,254 @@
+---
+title: "5a: Global Measures of Spatial Autocorrelation"
+author: "Emma Chew En Chin"
+date: "Sep 25, 2025"
+date-modified: "last-modified"
+format: html
+execute: 
+  echo: true
+  eval: true
+  warning: false
+  freeze: true
+---
+
+## 1 Overview
+
+**Main Objective**: As a local government, ensure equal distribution of development in the province.
+
+**Research Objective**: Discover if development are evenly distributed geographically. If no, are there signs of spatial clustering and where are the clusters?
+
+The following R packages are used:
+
+-   `spdep`: compute spatial weights and global and local spatial autocorrelation statistics
+
+```{r}
+pacman::p_load(sf, spdep, tmap, tidyverse)
+```
+
+## 2 Importing the Data
+
+### 2.1 Importing the Shapefile
+
+```{r}
+hunan <- st_read(dsn = "data/geospatial", 
+                 layer = "Hunan")
+```
+
+### 2.2 Importing the csv file
+
+```{r}
+hunan2012 <- read_csv("data/aspatial/Hunan_2012.csv")
+```
+
+### 2.3 Performing a Relational Join
+
+The attribute table of *hunan*'s SpatialPolygonsDataFrame will be updated with the attribute fields of *hunan2012* dataframe.
+
+```{r}
+hunan <- left_join(hunan,hunan2012) %>%
+  select(1:4, 7, 15)
+```
+
+### 2.4 Visualising the Regional Development Indicator
+
+A base map and choropleth map will be plotted, showing the distribution of GDPPC 2012.
+
+```{r}
+equal <- tm_shape(hunan) +
+  tm_polygons(fill = "GDPPC",
+              fill.scale = tm_scale_intervals(
+                style = "equal",
+                n = 5,
+                values = "brewer.blues")) +
+  tm_borders(fiil_alpha = 0.5) + 
+  tm_layout(legend.position = c("left", "bottom"), 
+            main.title = "Equal interval classification")
+
+quantile <- tm_shape(hunan) +
+  tm_polygons(fill = "GDPPC",
+              fill.scale = tm_scale_intervals(
+                style = "quantile",
+                n = 5)) +
+  tm_borders(fiil_alpha = 0.5) + 
+  tm_layout(legend.position = c("left", "bottom"), 
+            main.title = "Quantile classification")
+
+tmap_arrange(equal, 
+             quantile, 
+             asp=1, 
+             ncol=2)
+```
+
+## 3 Global Measures of Spatial Autocorrelation
+
+The core concept of Spatial Autocorrelation relates to Tobler's First Law of Geography, where "Everything is related to everything else, but near things are more related than distant things".
+
+### 3.1 Computing Contiguity Spatial Weights
+
+Spatial weights of a study area is required to compute the global spatial autocorrelation statistics.
+
+`poly2nb()` of **spdep** package is used to compute contiguity weight matrices for the study area. For the below, Queen contiguity weight matrix is computed.
+
+```{r}
+wm_q <- poly2nb(hunan, 
+                queen=TRUE)
+summary(wm_q)
+```
+
+The summary report above shows that there are 88 area units in Hunan. The most connected area unit has 11 neighbours. There are two area units with only one neighbour.
+
+### 3.2 Row-standardised weights matrix
+
+Next, we assign weights to each neighbouring polygon. For the below, we will assign equal weight (style="**W**"), which will apply a weight of **1/(#ofneighbours)** to each neighbouring county, then sum up the weighted income values.
+
+One limitation of this method is that the polygons along the edges of the study area will have values based on fewer polygons, and will potentially over or under estimate the spatial autocorrelation in the data.
+
+Hence, other that this weight (style="**W**"), there is also (style="**B**") which uses binary weights where 1 = locations are neighbours while 0 = locations that are not neighbours.
+
+Below are instances of other styles:
+
+| Style Code | Name                  | Calculation                     |
+|------------|-----------------------|---------------------------------|
+| B          | Binary                | 1 if neighbours, 0 if not       |
+| W          | Row-standardised      | Weights sum to 1 for each row   |
+| C          | Globally standardised | Total weights sum to 1          |
+| U          | Uniform               | All neighbours get equal weight |
+| S          | Variance-stabilising  | Complex standardisation         |
+
+Additionally, if zero.policy = TRUE, weights vectors of zero length are inserted for regions without neighbour in the neighbours list. These will in turn generate lag values of zero, equivalent to the sum of products of the zero row t(rep(0, length=length(neighbours))) %\*% x, for arbitrary numerical vector x of length length(neighbours).
+
+```{r}
+rswm_q <- nb2listw(wm_q, 
+                   style="W", 
+                   zero.policy = TRUE)
+rswm_q
+```
+
+### 3.3 Global Measures of Spatial Autocorrelation: Moran’s I
+
+#### 3.3.1 Maron’s I test
+
+```{r}
+moran.test(hunan$GDPPC, 
+           listw=rswm_q, 
+           zero.policy = TRUE, 
+           na.action=na.omit)
+```
+
+From the results, Moran's I = 0.301, which means there is strong positive spatial autocorrelation at a 99% confidence level.
+
+We can conclude that GDPPC is spatially clustered as high-GDPPC counties tend to be near other high-GDPPC counties and vice versa.
+
+#### 3.3.2 Computing Monte Carlo Moran’s I
+
+Using `moran.mc()`, 999 simulations will be performed for the Moran’s I statistic.
+
+```{r}
+set.seed(1234)
+bperm= moran.mc(hunan$GDPPC, 
+                listw=rswm_q, 
+                nsim=999, 
+                zero.policy = TRUE, 
+                na.action=na.omit)
+bperm
+```
+
+#### 3.3.3 Visualising Monte Carlo Moran’s I
+
+From the simulations, we observe the test statistics using mean, variance and other distribution metrics.
+
+```{r}
+mean(bperm$res[1:999])
+```
+
+```{r}
+var(bperm$res[1:999])
+```
+
+```{r}
+summary(bperm$res[1:999])
+```
+
+Using base graph to plot the values.
+
+```{r}
+hist(bperm$res, 
+     freq=TRUE, 
+     breaks=20, 
+     xlab="Simulated Moran's I")
+abline(v=0, 
+       col="red") 
+```
+
+As Moran's I value is above the average of Exepected Moran's I (E(I)), under the null hypothesis of no spatial autocorrelation, the data shows a stronger tendency toward clustering (positive spatial autocorrelation) than would be expected if the values were randomly distributed.
+
+### 3.4 Global Measures of Spatial Autocorrelation: Geary’s C
+
+#### 3.4.1 Geary’s C test
+
+```{r}
+geary.test(hunan$GDPPC, listw=rswm_q)
+```
+
+From the results, Geary's C = 0.691 (less than 1), which means there is strong positive spatial autocorrelation at a 99% confidence level.
+
+We can conclude that GDPPC is spatially clustered as high-GDPPC counties tend to be near other high-GDPPC counties and vice versa.
+
+#### 3.4.2 Computing Monte Carlo Geary’s C
+
+```{r}
+set.seed(1234)
+bperm=geary.mc(hunan$GDPPC, 
+               listw=rswm_q, 
+               nsim=999)
+bperm
+```
+
+From the p-value = 0.001, we can conclude at a 99% confidence interval that we can reject the null hypothesis of no spatial autocorrelation.
+
+#### 3.4.3 Visualising the Monte Carlo Geary’s C
+
+```{r}
+mean(bperm$res[1:999])
+```
+
+```{r}
+var(bperm$res[1:999])
+```
+
+```{r}
+summary(bperm$res[1:999])
+```
+
+```{r}
+hist(bperm$res, freq=TRUE, breaks=20, xlab="Simulated Geary c")
+abline(v=1, col="red") 
+```
+
+## 4 Spatial Correlogram
+
+Spatial Correlograms are used to examine patterns of spatial autocorrelation in your data or model residuals.
+
+They show how correlated are pairs of spatial observations when you increase the distance (lag) between them - they are plots of some index of autocorrelation (Moran’s I or Geary’s c) against distance.
+
+Although correlograms are not as fundamental as variograms (a keystone concept of geostatistics), they are very useful as an exploratory and descriptive tool. For this purpose they actually provide richer information than variograms.
+
+### 4.1 Compute Moran’s I correlogram
+
+`sp.correlogram()` from **spdep** is used to compute a 6-lag spatial correlogram of GDPPC. The global spatial autocorrelation method used is Moran’s I.
+
+```{r}
+MI_corr <- sp.correlogram(wm_q, 
+                          hunan$GDPPC, 
+                          order=6, 
+                          method="I", 
+                          style="W")
+plot(MI_corr)
+```
+
+```{r}
+print(MI_corr)
+```
+
+```{r}
+```
