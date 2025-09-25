@@ -20,9 +20,9 @@ website:
         - text: "Hands-on Exercise 4"
           href: "Hands-on Exercise/Hands-on_Ex4/Hands-on_Ex4.html"
         - text: "Hands-on Exercise 5a"
-          href: "Hands-on Exercise/Hands-on_Ex4/Hands-on_Ex5a.html"
+          href: "Hands-on Exercise/Hands-on_Ex5a/Hands-on_Ex5a.html"
         - text: "Hands-on Exercise 5b"
-          href: "Hands-on Exercise/Hands-on_Ex4/Hands-on_Ex5b.html"
+          href: "Hands-on Exercise/Hands-on_Ex5b/Hands-on_Ex5b.html"
           
       - text: "In-class Exercise"
         menu: 
