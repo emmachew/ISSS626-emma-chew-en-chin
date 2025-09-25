@@ -1,0 +1,16 @@
+---
+title: "5b: Local Measures of Spatial Autocorrelation"
+author: "Emma Chew En Chin"
+date: "Sep 25, 2025"
+date-modified: "last-modified"
+format: html
+execute: 
+  echo: true
+  eval: true
+  warning: false
+  freeze: true
+---
+
+## 1 Overview
+
+**Local Measures of Spatial Autocorrelation (LMSA)** focuses on the relationships between each observation and its surroundings, rather than providing a single summary of these relationships across the map.

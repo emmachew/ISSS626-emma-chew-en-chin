@@ -250,5 +250,26 @@ plot(MI_corr)
 print(MI_corr)
 ```
 
+From the spatial correlogram, we can observer that the Moran's I value decreases with increasing lag. (eg. Lag 1, Moran's I value = 0.301, Lag 2, Moran's I value = 0.206)
+
+This means that with immediate neighbours, there is significant and strong clustering, but with neighbours at longer distances, this clustering is more insignificant.
+
+Additionally at Lag 5 and Lag 6, Moran's I value becomes negative, indicating a dispersion distribution (or strong negative autocorrelation) at the furthest distances.
+
+### 4.2 Compute Geary’s C correlogram and plot
+
 ```{r}
+GC_corr <- sp.correlogram(wm_q, 
+                          hunan$GDPPC, 
+                          order=6, 
+                          method="C", 
+                          style="W")
+plot(GC_corr)
 ```
+
+```{r}
+print(GC_corr)
+```
+Geary's C is an inverse measure of spatial autocorrelation compared to Moran's I, hence we see the similar outcome from the Geary's C estimates. 
+
+At Lag 1 and 2, Geary's C < 1, indicating strong positive autocorrelation. At Lag 3 and 4, Geary's C ~ 1, which means there is no significant spatial autocorrelation. At Lag 5 and 6, Geary's C > 1, there is strong negative autocorrelation (dispersion).
