@@ -1,0 +1,65 @@
+---
+title: "5: Global and Local Measures of Spatial Autocorrelation: sfdep methods"
+author: "Emma Chew En Chin"
+date: "Sep 27, 2025"
+date-modified: "last-modified"
+format: html
+execute: 
+  echo: true
+  eval: true
+  warning: false
+  freeze: true
+---
+
+## 1 Getting Started
+
+Loading all the R packages
+
+```{r}
+pacman::p_load(sf, spdep, tmap, tidyverse, sfdep)
+```
+
+## 2 Importing the Data
+
+### 2.1 Importing the Shapefile
+
+Hunan geospatial data is projected from from WGS 84 to UTM zone 50N (i.e. EPSG: 32650).
+
+```{r}
+hunan <- st_read(dsn = "data/geospatial", 
+                 layer = "Hunan") %>% 
+  st_transform(crs = 32650)
+```
+
+### 2.2 Importing the csv file
+
+
+```{r}
+hunan2012 <- read_csv("data/aspatial/Hunan_2012.csv")
+```
+
+### 2.3 Performing a Relational Join
+
+The attribute table of *hunan*'s SpatialPolygonsDataFrame will be updated with the attribute fields of *hunan2012* dataframe.
+
+```{r}
+hunan_GDPPC <- left_join(hunan,hunan2012) %>%
+  select(1:4, 7, 15)
+```
+## 3 Global Measures of Spatial Association
+
+Step 1: Deriving Queen's contiguity weights: sfdep methods
+
+```{r}
+wm_q <- hunan_GDPPC %>%
+    mutate(nb = st_contiguity(geometry),
+           wt = st_weights(nb, 
+                          style = "W"),
+           .before = 1)
+```
+
+```{r}
+wm_q <- poly2nb(hunan, 
+                queen=TRUE)
+print(wm_q)
+```

@@ -1,0 +1,15 @@
+{
+  "hash": "dbc12866d3877a2a9028df243a8aad74",
+  "result": {
+    "engine": "knitr",
+    "markdown": "---\ntitle: \"5: Global and Local Measures of Spatial Autocorrelation: sfdep methods\"\nauthor: \"Emma Chew En Chin\"\ndate: \"Sep 27, 2025\"\ndate-modified: \"last-modified\"\nformat: html\nexecute: \n  echo: true\n  eval: true\n  warning: false\n  freeze: true\n---\n\n## 1 Getting Started\n\nLoading all the R packages\n\n\n::: {.cell}\n\n```{.r .cell-code}\npacman::p_load(sf, spdep, tmap, tidyverse, sfdep)\n```\n:::\n\n\n## 2 Importing the Data\n\n### 2.1 Importing the Shapefile\n\nHunan geospatial data is projected from from WGS 84 to UTM zone 50N (i.e. EPSG: 32650).\n\n\n::: {.cell}\n\n```{.r .cell-code}\nhunan <- st_read(dsn = \"data/geospatial\", \n                 layer = \"Hunan\") %>% \n  st_transform(crs = 32650)\n```\n\n::: {.cell-output .cell-output-stdout}\n\n```\nReading layer `Hunan' from data source \n  `C:\\emmachew\\ISSS626-emma-chew-en-chin\\In-class Exercise\\In-class_Ex5\\data\\geospatial' \n  using driver `ESRI Shapefile'\nSimple feature collection with 88 features and 7 fields\nGeometry type: POLYGON\nDimension:     XY\nBounding box:  xmin: 108.7831 ymin: 24.6342 xmax: 114.2544 ymax: 30.12812\nGeodetic CRS:  WGS 84\n```\n\n\n:::\n:::\n\n\n### 2.2 Importing the csv file\n\n\n\n::: {.cell}\n\n```{.r .cell-code}\nhunan2012 <- read_csv(\"data/aspatial/Hunan_2012.csv\")\n```\n:::\n\n\n### 2.3 Performing a Relational Join\n\nThe attribute table of *hunan*'s SpatialPolygonsDataFrame will be updated with the attribute fields of *hunan2012* dataframe.\n\n\n::: {.cell}\n\n```{.r .cell-code}\nhunan_GDPPC <- left_join(hunan,hunan2012) %>%\n  select(1:4, 7, 15)\n```\n:::\n\n## 3 Global Measures of Spatial Association\n\nStep 1: Deriving Queen's contiguity weights: sfdep methods\n\n\n::: {.cell}\n\n```{.r .cell-code}\nwm_q <- hunan_GDPPC %>%\n    mutate(nb = st_contiguity(geometry),\n           wt = st_weights(nb, \n                          style = \"W\"),\n           .before = 1)\n```\n:::\n\n\n\n::: {.cell}\n\n```{.r .cell-code}\nwm_q <- poly2nb(hunan, \n                queen=TRUE)\nprint(wm_q)\n```\n\n::: {.cell-output .cell-output-stdout}\n\n```\nNeighbour list object:\nNumber of regions: 88 \nNumber of nonzero links: 448 \nPercentage nonzero weights: 5.785124 \nAverage number of links: 5.090909 \n```\n\n\n:::\n:::\n\n",
+    "supporting": [],
+    "filters": [
+      "rmarkdown/pagebreak.lua"
+    ],
+    "includes": {},
+    "engineDependencies": {},
+    "preserve": {},
+    "postProcess": true
+  }
+}
