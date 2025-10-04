@@ -1,0 +1,187 @@
+---
+title: "6: Preparation of LTA Data Mall Data for Take-home Exercise 2"
+author: "Emma Chew En Chin"
+date: "Oct 4, 2025"
+date-modified: "last-modified"
+format: html
+execute: 
+  echo: true
+  eval: true
+  warning: false
+  freeze: true
+---
+
+## Loading the R packages
+
+```{r}
+pacman::p_load(tidyverse, sf, sfdep, tmap, knitr, httr, rvest)
+```
+
+## Importing Data
+
+### Bus Stop Location
+
+As Bus Stop location data has crs = 9001, we standardise it into crs = 3414.
+
+```{r}
+BusStop = st_read(dsn = "data/LTADataMall/",
+                  layer = "BusStop") %>%
+  st_transform(crs = 3414)
+```
+
+### Master Plan 2019 Subzone
+
+```{r}
+mpsz_sf <- st_read("data/geospatial/MasterPlan2019SubzoneBoundaryNoSeaKML.kml") %>%
+  st_zm(drop = TRUE, what = "ZM") %>% st_transform(crs = 3414)
+```
+
+```{r}
+extract_kml_field <- function(html_text, field_name) {
+  if (is.na(html_text) || html_text == "") return(NA_character_)
+  
+  page <- read_html(html_text)
+  rows <- page %>% html_elements("tr")
+  
+  value <- rows %>%
+    keep(~ html_text2(html_element(.x, "th")) == field_name) %>%
+    html_element("td") %>%
+    html_text2()
+  
+  if (length(value) == 0) NA_character_ else value
+}
+```
+
+```{r}
+mpsz_sf <- mpsz_sf %>%
+  mutate(
+    REGION_N = map_chr(Description, extract_kml_field, "REGION_N"),
+    PLN_AREA_N = map_chr(Description, extract_kml_field, "PLN_AREA_N"),
+    SUBZONE_N = map_chr(Description, extract_kml_field, "SUBZONE_N"),
+    SUBZONE_C = map_chr(Description, extract_kml_field, "SUBZONE_C")
+  ) %>%
+  select(-Name, -Description) %>%
+  relocate(geometry, .after = last_col())
+```
+
+```{r}
+mpsz_cl <- mpsz_sf %>%
+  filter(SUBZONE_N != "SOUTHERN GROUP",
+         PLN_AREA_N != "WESTERN ISLANDS", 
+         PLN_AREA_N != "NORTH-EASTERN ISLANDS")
+```
+
+```{r}
+write_rds(mpsz_cl, 
+          "data/rds/mpsz_cl.rds")
+```
+
+### O-D Bus Trips
+
+```{r}
+odbus <- read_csv("data/LTADataMall/origin_destination_bus_202508.csv")
+```
+
+## Visualise the Busstops
+
+We see some busstops outside the polygons. (Due to JB border)
+
+```{r}
+tm_shape(mpsz_cl) + 
+  tm_polygons() + 
+  tm_shape(BusStop) + 
+  tm_dots()
+```
+
+### Extract Bus Stops within Singapore
+
+We do not use left join as we only want to get bus stops within mpsz.
+
+```{r}
+BusStop_in_SG <- st_join(
+  BusStop, mpsz_cl,
+  join = st_within,
+  left = FALSE)
+```
+
+Plot the bus stop data again to check that the bus stops have been removed.
+
+```{r}
+tm_shape(mpsz_cl) + 
+  tm_polygons() + 
+  tm_shape(BusStop_in_SG) + 
+  tm_dots()
+```
+
+## Deriving Analytical Hexagon
+
+```{r}
+hexagon <- st_make_grid(mpsz_cl,
+                        cellsize = 700,
+                        what = "polygon",
+                        square = FALSE) %>%
+  st_sf()
+```
+
+### Filtering hexagons with bus stops
+
+`n_collisions` counts the number of bus stops in each hexagon.
+Only retain hexagons with bus stops.
+
+```{r}
+hexagon$n_collisions =
+  lengths(st_intersects(
+    hexagon, BusStop_in_SG))
+
+hexagon <- filter(hexagon, n_collisions > 0)
+```
+
+### Assigning ids to each hexagon
+
+Create id for each hexagon as previous hexagon table has no id.
+
+```{r}
+hexagon <- hexagon %>%
+  select(,-n_collisions)
+
+hexagon$HEX_ID <- sprintf(
+  "H%04d", seq_len(nrow(hexagon))) %>%
+  as.factor()
+
+kable(head(hexagon))
+```
+
+## Preparing Trip Generation Data
+
+Only interested in ORIGIN_PT_CODE (trip origin).
+
+### Cleaning the data
+
+Remove unnecessary columns.
+
+```{r}
+trips <- odbus %>%
+  select(c(ORIGIN_PT_CODE, DAY_TYPE, TIME_PER_HOUR, TOTAL_TRIPS)) %>%
+  rename(BUS_STOP_N = ORIGIN_PT_CODE) %>%
+  rename(HOUR_OF_DAY = TIME_PER_HOUR) %>%
+  rename(TRIPS = TOTAL_TRIPS)
+trips$BUS_STOP_N <- as.factor(trips$BUS_STOP_N)
+kable(head(trips))
+```
+
+### Combining bus stop and hexagon layers
+
+```{r}
+bs_hex <-st_intersection(
+  BusStop, hexagon) %>%
+  st_drop_geometry() %>%
+  select(c(BUS_STOP_N, HEX_ID))
+kable(head(bs_hex))
+```
+
+### Adding Hex_ID into bus trips data
+
+```{r}
+trips <- inner_join(trips, bs_hex)
+kable(head(trips))
+```
