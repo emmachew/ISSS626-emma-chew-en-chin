@@ -1,0 +1,223 @@
+---
+title: "2: Hot Spot & Cold Spot Analysis of Bus Ridership"
+author: "Emma Chew En Chin"
+date: "Oct 14, 2025"
+date-modified: "last-modified"
+format: html
+execute: 
+  echo: true
+  eval: true
+  warning: false
+  freeze: true
+---
+
+## 1 Overview
+
+In this study, we utilise the following methods of **Local Measures of Spatial Autocorrelation (LMSA)** and **Emerging Hot Spot Analysis (EHSA)**, which are geospatial methodologies to analyse spatio-temporal patterns of bus ridership in Singapore.
+
+We aim to move beyond basic mapping to identify **hotspots** (areas of high ridership concentration) and **coldspots** (areas of low ridership) . Understanding these localised patterns will provide more insight into human mobility, and infrastructure improvements for public transport planning in Singapore.
+
+**Local Measures of Spatial Autocorrelation (LMSA)** is used to identify specific locations where values are significantly grouped. Instead of providing a single summary for the entire study area, methods such as **Local Moran's I**, **Local Geary’s C**, and **Getis-Ord Gi\***, calculate a distinct statistic for every point. From this, the local neighbourhood around the point can be tested to see if similar (or dissimiliar) values are clustered together more than random chance. The goal is to precisely map concentrated high values (hotspots) and concentrated low values (coldspots), and unusual deviations or outliers.
+
+**Emerging Hot Spot Analysis (EHSA)** is used to identify spatio-temporal changes in spatial clustering. It takes static data and converts it into a dynamic **space-time cube** to reveal how patterns are shifting. EHSA first utilizes the local Gi∗ statistic to find where the clusters (hot and cold spots) exist, then integrates the **Mann-Kendall trend test** to determine their developmental path. This combination allows for a categorisation of trends, identifying clusters that are, for example, becoming "new," "intensifying," or "diminishing." Ultimately, EHSA provides a temporal narrative, moving beyond static analysis to explain the **dynamics and persistence** of high and low value concentrations.
+
+### 1.1 Datasets
+
+**Aspatial Data**
+
+-   *Passenger Volume by Origin Destination Bus Stops* from [LTA DataMall](https://datamall.lta.gov.sg/content/datamall/en.html)
+
+**Geospatial Data**
+
+-   *Bus Stop Location* from LTA DataMall. It provides information about all the bus stops currently being serviced by buses, including the bus stop code (identifier) and location coordinates.
+
+-   *Master Plan 2019 Subzone Boundary (No Sea)* from [Singapore’s open data portal](https://data.gov.sg/).
+
+### 1.2 Methodology
+
+**Step 1: Data Aggregation and Spatial Encoding**
+First, the raw bus ridership data (collected via smart cards and GPS) will be preprocessed and aggregated into a suitable spatial framework. This involves calculating the total number of passenger trips by origin and destination for defined time intervals (e.g., morning and evening peak hours, off-peak) and aggregating these counts to a defined spatial unit. 
+**Step 2: Static Hotspot and Coldspot Identification (LMSA)**
+
+Next, Local Measures of Spatial Autocorrelation (LMSA), specifically the Getis-Ord Gi∗ statistic, will be used to identify statistically significant static hotspots (high-ridership clusters) and coldspots (low-ridership clusters) for each defined time interval. 
+
+**Step 3: Spatio-Temporal Analysis (EHSA)**
+
+Emerging Hot Spot Analysis (EHSA) will be conducted by organising the static Gi∗ results from all time intervals into a space-time cube. The output will classify areas into categories such as "new," "intensifying," "diminishing," or "sporadic" hot and cold spots, providing dynamic insights into how bus ridership patterns are changing over time.
+
+## 2 Data Preparation
+
+### 2.1 Loading the R packages
+
+```{r}
+pacman::p_load(tidyverse, sf, sfdep, tmap, knitr, httr, rvest)
+```
+
+### Importing Data
+
+### Bus Stop Location
+
+As Bus Stop location data has crs = 9001, we standardise it into crs = 3414.
+
+```{r}
+BusStop = st_read(dsn = "data/LTADataMall/",
+                  layer = "BusStop") %>%
+  st_transform(crs = 3414)
+```
+
+### Master Plan 2019 Subzone
+
+```{r}
+mpsz_sf <- st_read("data/geospatial/MasterPlan2019SubzoneBoundaryNoSeaKML.kml") %>%
+  st_zm(drop = TRUE, what = "ZM") %>% st_transform(crs = 3414)
+```
+
+```{r}
+extract_kml_field <- function(html_text, field_name) {
+  if (is.na(html_text) || html_text == "") return(NA_character_)
+  
+  page <- read_html(html_text)
+  rows <- page %>% html_elements("tr")
+  
+  value <- rows %>%
+    keep(~ html_text2(html_element(.x, "th")) == field_name) %>%
+    html_element("td") %>%
+    html_text2()
+  
+  if (length(value) == 0) NA_character_ else value
+}
+```
+
+```{r}
+mpsz_sf <- mpsz_sf %>%
+  mutate(
+    REGION_N = map_chr(Description, extract_kml_field, "REGION_N"),
+    PLN_AREA_N = map_chr(Description, extract_kml_field, "PLN_AREA_N"),
+    SUBZONE_N = map_chr(Description, extract_kml_field, "SUBZONE_N"),
+    SUBZONE_C = map_chr(Description, extract_kml_field, "SUBZONE_C")
+  ) %>%
+  select(-Name, -Description) %>%
+  relocate(geometry, .after = last_col())
+```
+
+```{r}
+mpsz_cl <- mpsz_sf %>%
+  filter(SUBZONE_N != "SOUTHERN GROUP",
+         PLN_AREA_N != "WESTERN ISLANDS", 
+         PLN_AREA_N != "NORTH-EASTERN ISLANDS")
+```
+
+```{r}
+write_rds(mpsz_cl, 
+          "data/rds/mpsz_cl.rds")
+```
+
+### O-D Bus Trips
+
+```{r}
+odbus <- read_csv("data/LTADataMall/origin_destination_bus_202508.csv")
+```
+
+## Visualise the Busstops
+
+We see some busstops outside the polygons. (Due to JB border)
+
+```{r}
+tm_shape(mpsz_cl) + 
+  tm_polygons() + 
+  tm_shape(BusStop) + 
+  tm_dots()
+```
+
+### Extract Bus Stops within Singapore
+
+We do not use left join as we only want to get bus stops within mpsz.
+
+```{r}
+BusStop_in_SG <- st_join(
+  BusStop, mpsz_cl,
+  join = st_within,
+  left = FALSE)
+```
+
+Plot the bus stop data again to check that the bus stops have been removed.
+
+```{r}
+tm_shape(mpsz_cl) + 
+  tm_polygons() + 
+  tm_shape(BusStop_in_SG) + 
+  tm_dots()
+```
+
+## Deriving Analytical Hexagon
+
+```{r}
+hexagon <- st_make_grid(mpsz_cl,
+                        cellsize = 700,
+                        what = "polygon",
+                        square = FALSE) %>%
+  st_sf()
+```
+
+### Filtering hexagons with bus stops
+
+`n_collisions` counts the number of bus stops in each hexagon.
+Only retain hexagons with bus stops.
+
+```{r}
+hexagon$n_collisions =
+  lengths(st_intersects(
+    hexagon, BusStop_in_SG))
+
+hexagon <- filter(hexagon, n_collisions > 0)
+```
+
+### Assigning ids to each hexagon
+
+Create id for each hexagon as previous hexagon table has no id.
+
+```{r}
+hexagon <- hexagon %>%
+  select(,-n_collisions)
+
+hexagon$HEX_ID <- sprintf(
+  "H%04d", seq_len(nrow(hexagon))) %>%
+  as.factor()
+
+kable(head(hexagon))
+```
+
+## Preparing Trip Generation Data
+
+Only interested in ORIGIN_PT_CODE (trip origin).
+
+### Cleaning the data
+
+Remove unnecessary columns.
+
+```{r}
+trips <- odbus %>%
+  select(c(ORIGIN_PT_CODE, DAY_TYPE, TIME_PER_HOUR, TOTAL_TRIPS)) %>%
+  rename(BUS_STOP_N = ORIGIN_PT_CODE) %>%
+  rename(HOUR_OF_DAY = TIME_PER_HOUR) %>%
+  rename(TRIPS = TOTAL_TRIPS)
+trips$BUS_STOP_N <- as.factor(trips$BUS_STOP_N)
+kable(head(trips))
+```
+
+### Combining bus stop and hexagon layers
+
+```{r}
+bs_hex <-st_intersection(
+  BusStop, hexagon) %>%
+  st_drop_geometry() %>%
+  select(c(BUS_STOP_N, HEX_ID))
+kable(head(bs_hex))
+```
+
+### Adding Hex_ID into bus trips data
+
+```{r}
+trips <- inner_join(trips, bs_hex)
+kable(head(trips))
+```

@@ -1,0 +1,12 @@
+---
+title: "6: Geographical Segmentation with Spatially Constrained Clustering Techniques"
+author: "Emma Chew En Chin"
+date: "Oct 15, 2025"
+date-modified: "last-modified"
+format: html
+execute: 
+  echo: true
+  eval: true
+  warning: false
+  freeze: true
+---
