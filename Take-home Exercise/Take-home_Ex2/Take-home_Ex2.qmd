@@ -53,9 +53,9 @@ Emerging Hot Spot Analysis (EHSA) will be conducted by organising the static Giâ
 pacman::p_load(tidyverse, sf, sfdep, tmap, knitr, httr, rvest)
 ```
 
-### Importing Data
+### 2.2 Importing Data
 
-### Bus Stop Location
+#### 2.2.1 Bus Stop Location
 
 As Bus Stop location data has crs = 9001, we standardise it into crs = 3414.
 
@@ -65,7 +65,7 @@ BusStop = st_read(dsn = "data/LTADataMall/",
   st_transform(crs = 3414)
 ```
 
-### Master Plan 2019 Subzone
+#### 2.2.2 Master Plan 2019 Subzone
 
 ```{r}
 mpsz_sf <- st_read("data/geospatial/MasterPlan2019SubzoneBoundaryNoSeaKML.kml") %>%
@@ -112,13 +112,13 @@ write_rds(mpsz_cl,
           "data/rds/mpsz_cl.rds")
 ```
 
-### O-D Bus Trips
+#### 2.2.3  O-D Bus Trips
 
 ```{r}
 odbus <- read_csv("data/LTADataMall/origin_destination_bus_202508.csv")
 ```
 
-## Visualise the Busstops
+##### 2.2.3.1 Visualise the Bus Stops
 
 We see some busstops outside the polygons. (Due to JB border)
 
@@ -129,7 +129,7 @@ tm_shape(mpsz_cl) +
   tm_dots()
 ```
 
-### Extract Bus Stops within Singapore
+##### 2.2.3.2 Extract Bus Stops within Singapore
 
 We do not use left join as we only want to get bus stops within mpsz.
 
@@ -149,7 +149,7 @@ tm_shape(mpsz_cl) +
   tm_dots()
 ```
 
-## Deriving Analytical Hexagon
+##### 2.2.3.3 Deriving Analytical Hexagon
 
 ```{r}
 hexagon <- st_make_grid(mpsz_cl,
@@ -159,7 +159,7 @@ hexagon <- st_make_grid(mpsz_cl,
   st_sf()
 ```
 
-### Filtering hexagons with bus stops
+##### 2.2.3.4 Filtering hexagons with bus stops
 
 `n_collisions` counts the number of bus stops in each hexagon.
 Only retain hexagons with bus stops.
@@ -172,7 +172,7 @@ hexagon$n_collisions =
 hexagon <- filter(hexagon, n_collisions > 0)
 ```
 
-### Assigning ids to each hexagon
+##### 2.2.3.5 Assigning ids to each hexagon
 
 Create id for each hexagon as previous hexagon table has no id.
 
@@ -187,13 +187,13 @@ hexagon$HEX_ID <- sprintf(
 kable(head(hexagon))
 ```
 
-## Preparing Trip Generation Data
+#### 2.2.4 Preparing Trip Generation Data
 
-Only interested in ORIGIN_PT_CODE (trip origin).
+We are only interested in ORIGIN_PT_CODE (trip origin).
 
-### Cleaning the data
+##### 2.2.4.1 Cleaning the data
 
-Remove unnecessary columns.
+Unnecessary columns are removed
 
 ```{r}
 trips <- odbus %>%
@@ -205,7 +205,7 @@ trips$BUS_STOP_N <- as.factor(trips$BUS_STOP_N)
 kable(head(trips))
 ```
 
-### Combining bus stop and hexagon layers
+##### 2.2.4.2 Combining bus stop and hexagon layers
 
 ```{r}
 bs_hex <-st_intersection(
@@ -215,7 +215,7 @@ bs_hex <-st_intersection(
 kable(head(bs_hex))
 ```
 
-### Adding Hex_ID into bus trips data
+##### 2.2.4.3 Adding Hex_ID into bus trips data
 
 ```{r}
 trips <- inner_join(trips, bs_hex)
