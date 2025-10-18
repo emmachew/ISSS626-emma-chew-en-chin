@@ -36,7 +36,8 @@ We aim to move beyond basic mapping to identify **hotspots** (areas of high ride
 ### 1.2 Methodology
 
 **Step 1: Data Aggregation and Spatial Encoding**
-First, the raw bus ridership data (collected via smart cards and GPS) will be preprocessed and aggregated into a suitable spatial framework. This involves calculating the total number of passenger trips by origin and destination for defined time intervals (e.g., morning and evening peak hours, off-peak) and aggregating these counts to a defined spatial unit. 
+First, the raw bus ridership data (collected via smart cards and GPS) will be preprocessed and aggregated into a suitable spatial framework. This involves calculating the total number of passenger trips by origin and destination for defined time intervals (e.g., morning and evening peak hours, off-peak) and aggregating these counts to a defined spatial unit.
+
 **Step 2: Static Hotspot and Coldspot Identification (LMSA)**
 
 Next, Local Measures of Spatial Autocorrelation (LMSA), specifically the Getis-Ord Giâˆ— statistic, will be used to identify statistically significant static hotspots (high-ridership clusters) and coldspots (low-ridership clusters) for each defined time interval. 
@@ -49,8 +50,12 @@ Emerging Hot Spot Analysis (EHSA) will be conducted by organising the static Giâ
 
 ### 2.1 Loading the R packages
 
+The following R packages are used:
+
+-   `spdep`: compute spatial weights and global and local spatial autocorrelation statistics
+
 ```{r}
-pacman::p_load(tidyverse, sf, sfdep, tmap, knitr, httr, rvest)
+pacman::p_load(tidyverse, sf, spdep, tmap, knitr, httr, rvest)
 ```
 
 ### 2.2 Importing Data
@@ -120,7 +125,7 @@ odbus <- read_csv("data/LTADataMall/origin_destination_bus_202508.csv")
 
 ##### 2.2.3.1 Visualise the Bus Stops
 
-We see some busstops outside the polygons. (Due to JB border)
+We see some bus stops outside the polygons. (Due to the JB border)
 
 ```{r}
 tm_shape(mpsz_cl) + 
@@ -153,7 +158,7 @@ tm_shape(mpsz_cl) +
 
 ```{r}
 hexagon <- st_make_grid(mpsz_cl,
-                        cellsize = 700,
+                        cellsize = 750,
                         what = "polygon",
                         square = FALSE) %>%
   st_sf()
@@ -220,4 +225,252 @@ kable(head(bs_hex))
 ```{r}
 trips <- inner_join(trips, bs_hex)
 kable(head(trips))
+```
+
+#### 2.2.5 Create Total Trips per Hexagon dataset
+
+In this section, we will join *hexagon* spatial data and *trips* aspatial data for Local Measures of Spatial Association (LMSA) analysis. This is to allow us to view the spatial distribution of total bus trips.
+
+##### 2.2.5.1 Aggregate Trip Data by Hexagon
+
+Within *trips* dataset, we calculate the total TRIPS per hexagon ("HEX_ID").
+
+```{r}
+trips_agg <- trips %>%
+  group_by(HEX_ID) %>%
+  summarise(total_trips = sum(TRIPS, na.rm = TRUE),
+            .groups = 'drop')
+
+kable(head(trips_agg))
+```
+
+##### 2.2.5.2 Relational Join 
+
+Join *trips_agg* with *hexagon* on "HEX_ID".
+
+```{r}
+hexagon_trips <- hexagon %>%
+  inner_join(trips_agg, by = "HEX_ID") %>%
+  mutate(total_trips = replace_na(total_trips, 0))
+
+kable(head(hexagon_trips))
+```
+
+#### 2.2.5 Create Total Trips per Hexagon dataset
+
+This section prepares the data for **Emerging Hot Spot Analysis (EHSA)**. We perform a spatial join to link the `hexagon` grid geometries with the aggregated bus trips data. By preserving the `HOUR_OF_DAY` dimension, we successfully build the spatio-temporal dataset required for constructing the space-time cube.
+
+##### 2.2.5.1 Aggregate Trip Data by Hexagon
+
+Within *trips* dataset, we calculate the total TRIPS per hexagon ("HEX_ID").
+
+```{r}
+trips_agg <- trips %>%
+  group_by(HEX_ID) %>%
+  summarise(total_trips = sum(TRIPS, na.rm = TRUE),
+            .groups = 'drop')
+
+kable(head(trips_agg))
+```
+
+##### 2.2.5.2 Relational Join 
+
+Join *trips_agg* with *hexagon* on "HEX_ID".
+
+```{r}
+hexagon_trips <- hexagon %>%
+  inner_join(trips_agg, by = "HEX_ID") %>%
+  mutate(total_trips = replace_na(total_trips, 0))
+
+kable(head(hexagon_trips))
+```
+
+## 3 Local Measures of Spatial Autocorrelation (LMSA)
+
+### 3.1 Visualising Bus Ridership in Singapore
+
+Using **tmap**, we can plot two choropleth maps using equal interval (i.e equal) and quantile (i.e. quantile) classification methods.
+
+```{r}
+equal <- tm_shape(hexagon_trips) +
+  tm_polygons(fill = "total_trips",
+              fill.scale = tm_scale_intervals(
+                style = "equal",
+                n = 5,
+                values = "brewer.blues"),
+              fill.legend = tm_legend(
+                title = "Total Bus Trips",
+                position = tm_pos_in(
+                  "left", "bottom"))) + 
+  tm_borders(fill_alpha = 0.5) +
+  tm_title("Equal interval classification")
+
+quantile <- tm_shape(hexagon_trips) +
+  tm_polygons(fill = "total_trips",
+              fill.scale = tm_scale_intervals(
+                style = "quantile",
+                n = 5,
+                values = "brewer.blues"),
+              fill.legend = tm_legend(
+                title = "Total Bus Trips",
+                position = tm_pos_in(
+                  "left", "bottom"))) + 
+  tm_borders(fill_alpha = 0.5) +
+  tm_title("Quantile interval classification")
+
+tmap_arrange(equal, 
+             quantile, 
+             asp=1, 
+             ncol=2)
+```
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
 ```
