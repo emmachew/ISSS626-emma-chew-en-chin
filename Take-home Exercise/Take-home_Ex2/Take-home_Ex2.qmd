@@ -13,13 +13,23 @@ execute:
 
 ## 1 Overview
 
-In this study, we utilise the following methods of **Local Measures of Spatial Autocorrelation (LMSA)** and **Emerging Hot Spot Analysis (EHSA)**, which are geospatial methodologies to analyse spatio-temporal patterns of bus ridership in Singapore.
+In this study, we utilise the following methods of Local Measures of Spatial Autocorrelation (LMSA) and Emerging Hot Spot Analysis (EHSA), which are geospatial methodologies to analyse spatio-temporal patterns of bus ridership in Singapore.
 
-We aim to move beyond basic mapping to identify **hotspots** (areas of high ridership concentration) and **coldspots** (areas of low ridership) . Understanding these localised patterns will provide more insight into human mobility, and infrastructure improvements for public transport planning in Singapore.
+We aim to move beyond basic mapping to identify *hotspots* (areas of high ridership concentration) and *coldspots* (areas of low ridership) . Understanding these localised patterns will provide more insight into human mobility, and infrastructure improvements for public transport planning in Singapore.
 
-**Local Measures of Spatial Autocorrelation (LMSA)** is used to identify specific locations where values are significantly grouped. Instead of providing a single summary for the entire study area, methods such as **Local Moran's I**, **Local Geary’s C**, and **Getis-Ord Gi\***, calculate a distinct statistic for every point. From this, the local neighbourhood around the point can be tested to see if similar (or dissimiliar) values are clustered together more than random chance. The goal is to precisely map concentrated high values (hotspots) and concentrated low values (coldspots), and unusual deviations or outliers.
+**Our key research questions are:**
 
-**Emerging Hot Spot Analysis (EHSA)** is used to identify spatio-temporal changes in spatial clustering. It takes static data and converts it into a dynamic **space-time cube** to reveal how patterns are shifting. EHSA first utilizes the local Gi∗ statistic to find where the clusters (hot and cold spots) exist, then integrates the **Mann-Kendall trend test** to determine their developmental path. This combination allows for a categorisation of trends, identifying clusters that are, for example, becoming "new," "intensifying," or "diminishing." Ultimately, EHSA provides a temporal narrative, moving beyond static analysis to explain the **dynamics and persistence** of high and low value concentrations.
+1\) Which areas in Singapore consistently exhibit high or low bus ridership, and
+
+2\) How do these patterns change over time?
+
+**Local Measures of Spatial Autocorrelation (LMSA)** is used to identify specific locations where values are significantly grouped. Instead of providing a single summary for the entire study area, methods such as *Local Moran's I*, *Local Geary’s C*, and *Getis-Ord Gi\**, calculate a distinct statistic for every point. From this, the local neighbourhood around the point can be tested to see if similar (or dissimiliar) values are clustered together more than random chance. The goal is to precisely map concentrated high values (hotspots) and concentrated low values (coldspots), and unusual deviations or outliers.
+
+**Emerging Hot Spot Analysis (EHSA)** is used to identify spatio-temporal changes in spatial clustering. It takes static data and converts it into a dynamic *space-time cube* to reveal how patterns are shifting. EHSA first utilizes the local Gi∗ statistic to find where the clusters (hot and cold spots) exist, then integrates the *Mann-Kendall trend test* to determine their developmental path. This combination allows for a categorisation of trends, identifying clusters that are, for example, becoming "new," "intensifying," or "diminishing." Ultimately, EHSA provides insight on how to plan transport supply based on the demand for transport services across time and space by determining peak vs off-peak, and hourly changes.
+
+From the output data, we will compare with a real life interactive map of bus stops and transport hubs in Singapore from [Busrouter.sg](https://busrouter.sg/).
+
+![Figure 1: Map of Bus Stops and Transport Hubs in Singapore (Busrouter.sg, 2025)](busmap.png)
 
 ### 1.1 Datasets
 
@@ -155,6 +165,8 @@ tm_shape(mpsz_cl) +
 ```
 
 ##### 2.2.3.3 Deriving Analytical Hexagon
+
+The size of a hexagon has been set to 750m as a benchmark for walking distance for a bus passenger situated in any location in Singapore.
 
 ```{r}
 hexagon <- st_make_grid(mpsz_cl,
@@ -479,7 +491,7 @@ The visualisations show that the bus ridership data is heavily skewed, with a fe
 
 Across the four methods, **Headtails interval classification** provides the most meaningful representation, as it effectively separates the high-ridership hot spots from the majority of lower-activity areas.
 
-The **Headtails interval classification** map pinpoints major hotspots in the North, East, Central and West.
+The **Headtails interval classification** map pinpoints major hotspots corresponding to major transport hubs in the West (Boon Lay Interchange), North (Woodlands Checkpoint, Woodlands Interchange) and East (Tampines Interchange). This shows that these hubs are the most utilised in Singapore.
 
 ##### 2.2.8.2 Plotting Bus Ridership by Peak Period
 
@@ -546,7 +558,11 @@ tmap_arrange(morning_map, afternoon_map,
              ncol = 2)
 ```
 
-For the Weekday Morning and Afternoon peak periods, we see a hot spot in the West and North. Whereas in the Weekend/Holiday peak and Off-peak hours, we see additional hotspots appearing in the North, and also East.
+For the Weekday Morning peak period, we see hot spots in the West (Boon Lay Interchange) and North (Woodlands Checkpoint, Woodlands Interchange), which suggests there are morning commuters coming from residential areas and from Johor Bahru.
+
+For the Weekday Afternoon peak period, the trips are more spread out, suggesting that there may be commute occurring for non-working population like students, homemakers and retirees.
+
+For Weekend/Holiday and Off-Peak hours, on top of the West and North hotspots, we see a hotspot in the East (Tampines Interchange) forming, which may indicate a movement to the East side for travel (Changi Airport), or leisure (East Coast Park, shopping malls).
 
 ## 3 Local Measures of Spatial Autocorrelation (LMSA)
 
@@ -617,9 +633,9 @@ tm_shape(lisa) +
 
 We can observe that the map is predominantly light-colored (light blue, white, and light orange), with the majority of hexagons falling into the -1 to 1 range.
 
-There are some areas of spatial clustering (dark blue), which indicate High-High clusters, in the East, Central and West areas.
+There are some areas of spatial clustering (dark blue), which indicate High-High clusters, in the West (Boon Lay Interchange), East (Tampines Interchange, Bedok Interchange), Central (Ang Mo Kio Interchange), Northeast (Punggol Int). These are key housing estates in Singapore with higher residential population, hence seeing higher demand for bus usage. This shows that the hubs can be expanded to offer more ridership capacity in terms of more bus routes and higher bus frequency.
 
-We also observe in the North area some negative spatial autocorrelation (dark orange) which may indicate High-Low clusters.
+We also observe in the North area (Woodlands Checkpoint) some negative spatial autocorrelation (dark orange) which indicates High-Low clusters. This is because commuters travelling to Woodlands Checkpoint bus stop mainly alight at a single bus stop, and this hot spot activity is not occurring at neighbouring bus stops. This shows potential for a specific bus to cater to this route of travel.
 
 #### 3.3.2 Mapping local Moran’s I p-values
 
@@ -872,9 +888,9 @@ lisa_map <- tm_shape(lisa) +
 tmap_arrange(ii.map, lisa_map, asp=1, ncol=2)
 ```
 
-From local Moran's I values, we can see strong positive autocorrelation in the West, Northeast and East.
+From local Moran's I values, we can see strong positive autocorrelation in the West (Boon Lay Interchange, Jurong East Interchange), Northeast (Punggol Interchange), East (Tampines Interchange, Bedok Interchange), and strong negative autocorrelation in the North (Woodlands Checkpoint). These correspond to transport hubs that cater to high populations.
 
-We can observe many statistically significant high-high clusters across the map appearing distinctly in the East/Northeast, Central, and isolated pockets in the West.
+On top of the existing hot spots, there are High-High clusters surrounding other key estates, which can give an indicator of where to expand and increase bus services.
 
 ### 3.4 Computing Local Geary's C
 
@@ -1028,9 +1044,9 @@ tmap_arrange(geary_strength_map, geary_clusters_map,
              heights = c(1, 1))
 ```
 
-From the visualisations of Local Geary's C values, we can see that the bus ridership on the West and North exhibits **strong positive similarity** (dark blue shades), where majority of hexagons have *total_trips* similar to their neighbours (i.e. Low-Low or High-High clustering). Whereas in the South and Northeast, there exists some areas of **strong negative similarity** (dark orange shades).
+From the visualisations of Local Geary's C values, we can see that the bus ridership in the West areas (Boon Lay, Jurong East) and North areas (Woodlands, Yishun) exhibit **strong positive similarity** (dark blue shades), where majority of hexagons have *total_trips* similar to their neighbours (i.e. Low-Low or High-High clustering). Whereas in the South (Marina Bay) and East (Tampines, Pasir Ris), there exists some areas of **strong negative similarity** (dark orange shades), which means the hexagons have very different ridership levels as compared to their neighbours.
 
-A closer look at the Geary clusters show that the West and North areas exhibit Low-High dissimilarity (pink shades), which means that there are cold spots in these areas.
+A closer look at the Geary clusters show that the West and North areas exhibit Low-Low similarity (pink shades), which means that there are cold spots in these areas with low bus usage.
 
 ### 3.5 Computing Getis-Ord Gi\*
 
@@ -1145,7 +1161,7 @@ tm_shape(HCSA_adw) +
   tm_title("Gi* Hot and Cold Spots by Intensity (p ≤ 0.05)")
 ```
 
-From the visualisation map, we can see that there are statistically significant **Very Strong Hot Spots** in the West, North and East areas (Gi\*\>0). The Gi\* values show that high bus ridership values in these regions is unlikely to occur by random chance (p \< 0.05), representing genuine spatial patterns rather than random distributions.
+From the visualisation map, we can see that there are statistically significant **Very Strong Hot Spots** in the West (Boon Lay Interchange) , North (Woodlands Interchange), Northeast (Punggol Interchange) and East (Tampines, Pasir Ris Interchange) areas (Gi\*\>0). This shows that there needs to be a highly connected network of bus stops and bus services to service these high-demand hotspots, and interchange facilities can be expanded to accommodate higher passenger volumes.
 
 ## 4 Emerging Hot Spot Analysis (EHSA)
 
@@ -1315,6 +1331,10 @@ ggplot(data = cbg,
   theme_light()
 ```
 
+The plot reveals Gi\* values of around -1.0 to -1.2, indicating consistent cold spot tendency, especially during the Morning Peak Period.
+
+However as the Gi\* values are not very extreme, these are weak or non-significant cold spots.
+
 #### 4.3.2 Interactive Mann-Kendall Plot
 
 ```{r}
@@ -1337,7 +1357,7 @@ cbg %>%
   tidyr::unnest_wider(mk)
 ```
 
-In the above result, sl is the **p-value**. As p-value > 0.05, we will not reject the null hypothesis that there is no monotonic trend in ridership.
+In the above result, sl is the **p-value**. As p-value \> 0.05, we will not reject the null hypothesis that there is no monotonic trend in ridership.
 
 #### 4.3.4 Mann-Kendall test dataframe
 
@@ -1364,13 +1384,9 @@ head(emerging)
 
 ### 4.4 Performing Emerging Hotspot Analysis
 
-We will perform EHSA analysis by using `emerging_hotspot_analysis()` of **sfdep** package. 
+We will perform EHSA analysis by using `emerging_hotspot_analysis()` of **sfdep** package.
 
-The `emerging_hotspot_analysis()` function requires:
--   x: spacetime object (e.g., trips_peak_st)
--   .var: variable name (e.g., "total_trips")
--   k: time lags (default: 1)
--   nsim: number of simulations
+The `emerging_hotspot_analysis()` function requires: - x: spacetime object (e.g., trips_peak_st) - .var: variable name (e.g., "total_trips") - k: time lags (default: 1) - nsim: number of simulations
 
 ```{r}
 ehsa <- emerging_hotspot_analysis(
@@ -1391,11 +1407,11 @@ ggplot(data = ehsa,
   geom_bar()
 ```
 
-From the results, we can identify that for most of the hexagons, there was no pattern identified. 
+From the results, we can identify that for most of the hexagons, there was no pattern identified.
 
 #### 4.4.2 Visualising EHSA
 
-We will join ehsa and hexagon data using HEX_ID, to visualise the geographic distribution of EHSA classes.
+We will join *ehsa* and *hexagon* datasets using HEX_ID, to visualise the geographic distribution of EHSA classes.
 
 ```{r}
 hexagon_ehsa <- hexagon %>%
@@ -1422,10 +1438,258 @@ if (nrow(ehsa_sig) > 0) {
 }
 ```
 
-There is an error occurring, and we conduct a check on the significant values and find that there are no polygons where p_value < 0.05.
+There is an error occurring, and we conduct a check on the significant values and find that there are no polygons where p_value \< 0.05.
 
 ```{r}
 nrow(ehsa_sig)
 ```
 
 As Peak Hour Period dataset may have not enough datapoints for EHSA (only 4 time values), we can consider looking at trips per hour instead.
+
+## 5 Emerging Hot Spot Analysis (EHSA) - With hourly trip data
+
+We conduct EHSA in with hourly trip data instead, to observe if there is a monotonic trend with a smaller time interval.
+
+### 5.1 Creating a Space-Time Cube
+
+#### 5.1.1 Cleaning hexagon_trips_hourly and hexagon Datasets
+
+```{r}
+kable(head(hexagon_trips_hourly))
+```
+
+```{r}
+kable(head(hexagon))
+```
+
+```{r}
+trips_hourly_st <- spacetime(hexagon_trips_hourly, hexagon,
+                      .loc_col = "HEX_ID",
+                      .time_col = "HOUR_OF_DAY")
+is_spacetime_cube(trips_hourly_st)
+```
+
+From the initial run of Space-Time cube, there is an error stating that some hexagons does not have data for all time periods.
+
+A perfect cube must have this property: total rows = (number of unique HEX_IDs) × (number of unique time_id values)
+
+```{r}
+n_locations <- n_distinct(hexagon_trips_hourly$HEX_ID)
+n_times <- n_distinct(hexagon_trips_hourly$HOUR_OF_DAY)
+n_expected <- n_locations * n_times
+
+cat("Locations:", n_locations, "\n")
+cat("Time periods:", n_times, "\n")
+cat("Rows:", nrow(hexagon_trips_hourly), "\n")
+cat("Expected rows:", n_expected, "\n")
+```
+
+From the result, we observe that the existing rows is fewer than expected rows. Hence we fill in the missing hexagons with 0 values.
+
+```{r}
+hexagon_trips_hourly_balanced <- hexagon_trips_hourly %>%
+  complete(
+    HEX_ID,
+    HOUR_OF_DAY = full_seq(min(HOUR_OF_DAY):max(HOUR_OF_DAY), 1),
+    fill = list(total_trips = 0)
+  ) %>%
+  arrange(HEX_ID, HOUR_OF_DAY)
+```
+
+Checking the counts of each hexagon to ensure they are filled with 24 hourly data.
+
+```{r}
+check_counts <- hexagon_trips_hourly_balanced %>%
+  count(HEX_ID)
+
+summary(check_counts$n)
+```
+
+We will then rebuild the Space-Time cube.
+
+```{r}
+trips_hourly_st <- spacetime(
+  hexagon_trips_hourly_balanced,
+  hexagon,
+  .loc_col = "HEX_ID",
+  .time_col = "HOUR_OF_DAY"
+)
+
+is_spacetime_cube(trips_hourly_st)
+```
+
+### 5.2 Computing Gi\*
+
+#### 5.2.1 Deriving the spatial weights
+
+We will derive the inverse distance weights as below.
+
+```{r}
+#| warning: false
+
+trips_hourly_nb <- trips_hourly_st %>%
+  activate("geometry") %>%
+  mutate(nb = include_self(
+    st_contiguity(geometry)),
+    wt = st_inverse_distance(nb, 
+                             geometry, 
+                             scale = 1,
+                             alpha = 1),
+    .before = 1) %>%
+  set_nbs("nb") %>%
+  set_wts("wt")
+```
+
+#### 5.2.2 Calculating local Gi\*
+
+To calculate local Gi\* statistics for each time period, we group the data by *HOUR_OF_DAY* and apply the `local_gstar_perm()` function, then unnest the results.
+
+```{r}
+gi_stars <- trips_hourly_nb %>% 
+  group_by(HOUR_OF_DAY) %>% 
+  mutate(gi_star = local_gstar_perm(
+    total_trips, nb, wt)) %>% 
+  tidyr::unnest(gi_star)
+```
+
+### 5.3 Mann-Kendall Test
+
+#### 5.3.1 Mann-Kendall Test on Gi\*
+
+We first look at 1 hexagon, H0001.
+
+```{r}
+hex_1 <- gi_stars %>% 
+  ungroup() %>% 
+  filter(HEX_ID == "H0001") |> 
+  select(HEX_ID, HOUR_OF_DAY, gi_star)
+```
+
+```{r}
+ggplot(data = hex_1, 
+       aes(x = HOUR_OF_DAY, 
+           y = gi_star)) +
+  geom_line() +
+  theme_light()
+```
+
+The plot reveals that in the early morning hours (0–3 AM), activity is more evenly distributed or slightly high in some areas (mild hot spots).
+
+Around morning to afternoon (4–17), there’s a stronger cold spot, suggesting lower-than-expected activity in those locations.
+
+After evening (18–23), the clustering of low activity weakens which suggests activity may start to spread or rise again.
+
+However as all values are between -1.3 and -0.2, this pattern is descriptive but not statistically strong.
+
+#### 5.3.2 Printing Mann-Kendall test report
+
+```{r}
+hex_1 %>%
+  summarise(mk = list(
+    unclass(
+      Kendall::MannKendall(gi_star)))) %>% 
+  tidyr::unnest_wider(mk)
+```
+
+In the above result, sl is the **p-value**. As p-value \> 0.05, we will not reject the null hypothesis that there is no monotonic trend in ridership.
+
+#### 5.3.3 Mann-Kendall test dataframe
+
+We will replicate the study for the entire dataframe by grouping by *HEX_ID*.
+
+```{r}
+ehsa <- gi_stars %>%
+  group_by(HEX_ID) %>%
+  summarise(mk = list(
+    unclass(
+      Kendall::MannKendall(gi_star)))) %>%
+  tidyr::unnest_wider(mk)
+head(ehsa)
+```
+
+To showcase emerging hot/cold spots, we can sort by significance level and tau.
+
+```{r}
+emerging <- ehsa %>% 
+  arrange(sl, abs(tau)) %>% 
+  slice(1:10)
+head(emerging)
+```
+
+### 5.4 Performing Emerging Hotspot Analysis
+
+We will perform EHSA analysis by using `emerging_hotspot_analysis()` of **sfdep** package.
+
+The `emerging_hotspot_analysis()` function requires: - x: spacetime object (e.g., trips_peak_st) - .var: variable name (e.g., "total_trips") - k: time lags (default: 1) - nsim: number of simulations
+
+```{r}
+ehsa_hourly <- emerging_hotspot_analysis(
+  x = trips_hourly_st, 
+  .var = "total_trips", 
+  k = 1, 
+  nsim = 99
+)
+```
+
+#### 5.4.1 Visualising the distribution of EHSA classes
+
+We can identify the prevalence of each EHSA class.
+
+```{r}
+ggplot(data = ehsa_hourly,
+       aes(x = classification)) +
+  geom_bar()
+```
+
+From the results, we can identify that for most of the hexagons, there was no pattern identified, but we have around 15% of hexagons categorised as sporadic coldspots, 11% of hexagons falling under oscillating coldspots, and 3% of hexagons categorised as persistent coldspots.
+
+This shows potential resource reallocation that can take place to optimise bus capacity.
+
+#### 5.4.2 Visualising EHSA
+
+We will join *ehsa_hourly* and *hexagon* datasets using HEX_ID, to visualise the geographic distribution of EHSA classes.
+
+```{r}
+hexagon_ehsa_hourly <- hexagon %>%
+  left_join(ehsa_hourly,
+            by = join_by(HEX_ID == location))
+```
+
+```{r}
+ehsa_sig_hourly <- hexagon_ehsa_hourly %>%
+  filter(p_value < 0.05) %>%
+  st_as_sf()
+
+tmap_mode("plot")
+
+
+tm_shape(hexagon_ehsa_hourly) +
+    tm_polygons() +
+    tm_borders(fill_alpha = 0.5) +
+    tm_shape(ehsa_sig_hourly) +
+    tm_fill("classification") + 
+    tm_borders(fill_alpha = 0.4)
+
+```
+
+From the visualisation, we can identify key areas with oscillating coldspots. These include residential areas with bus interchanges in the West (Boon Lay, Tengah, Choa Chu Kang, Bukit Panjang, and Jurong East), North (Sembawang), Northeast (Punggol, Serangoon), and East (Tampines). Peak bus usage in these residential areas occurs during morning and evening commutes, while off-peak periods show lower ridership, which could allow for optimised bus deployment to reduce operating costs.
+
+There is a notable but temporary coldspot at Changi Airport, reflecting periods of low bus activity. Bus services remain necessary, as demand can increase at other times.
+
+Oscillating hotspots are observed in the West (Boon Lay), North (Woodlands), and East (Tampines), likely reflecting demand fluctuations due to nearby industrial estates and workplaces. These patterns suggest that bus service frequency may need to adapt dynamically throughout the day to meet changing demand.
+
+## 6 Conclusion
+
+The analysis of Singapore bus ridership across spatial and temporal dimensions reveals distinct patterns of high and low activity. The **Headtails interval classification** was most effective in highlighting hotspots, showing that major transport hubs in the West (Boon Lay Interchange), North (Woodlands Checkpoint, Woodlands Interchange), and East (Tampines Interchange) consistently register high ridership.
+
+Temporal analysis by peak periods indicates that weekday morning peaks are concentrated around residential-to-work commuter routes, while weekday afternoons see more dispersed trips, likely from non-working populations. Weekend and off-peak periods highlight increased movement toward leisure and travel destinations in the East, suggesting dynamic demand across time.
+
+Local spatial autocorrelation measures (Local Moran’s I and Local Geary’s C) confirm clustering of ridership patterns. Strong positive autocorrelation occurs at key hubs in the West, Northeast, and East, while negative autocorrelation at the North highlights isolated high-ridership locations. Getis-Ord Gi\* analysis further pinpoints statistically significant hot and cold spots, reinforcing the importance of West, North, Northeast, and East hubs for transport planning.
+
+Emerging Hot Spot Analysis (EHSA) with hourly trip data shows that while most areas do not exhibit significant monotonic trends over time, subtle temporal patterns exist. Early morning hours show mild activity in some areas, midday periods reveal stronger cold spots, and activity tends to spread again in the evening. These insights suggest that bus service planning can be optimised by focusing on high-demand hubs, adjusting frequencies for peak periods, and monitoring emerging ridership trends for responsive transport management.
+
+Overall, the spatial-temporal analysis provides actionable insights for optimising bus operations, enhancing connectivity at major hubs, and addressing both existing and potential future ridership needs.
+
+## 7 References
+
+BusRouter.sg. (2025). Singapore bus routes explorer. Retrieved November 28, 2024, from https://busrouter.sg/
