@@ -35,12 +35,11 @@ We aim to move beyond basic mapping to identify **hotspots** (areas of high ride
 
 ### 1.2 Methodology
 
-**Step 1: Data Aggregation and Spatial Encoding**
-First, the raw bus ridership data (collected via smart cards and GPS) will be preprocessed and aggregated into a suitable spatial framework. This involves calculating the total number of passenger trips by origin and destination for defined time intervals (e.g., morning and evening peak hours, off-peak) and aggregating these counts to a defined spatial unit.
+**Step 1: Data Aggregation and Spatial Encoding** First, the raw bus ridership data (collected via smart cards and GPS) will be preprocessed and aggregated into a suitable spatial framework. This involves calculating the total number of passenger trips by origin and destination for defined time intervals (e.g., morning and evening peak hours, off-peak) and aggregating these counts to a defined spatial unit.
 
 **Step 2: Local Measures of Spatial Autocorrelation (LMSA)**
 
-Next, Local Measures of Spatial Autocorrelation (LMSA), specifically the Local Moran’s I, Local Geary’s C, and the Getis-Ord Gi* statistics, will be used to identify statistically significant static hotspots (high-ridership clusters) and coldspots (low-ridership clusters). 
+Next, Local Measures of Spatial Autocorrelation (LMSA), specifically the Local Moran’s I, Local Geary’s C, and the Getis-Ord Gi\* statistics, will be used to identify statistically significant static hotspots (high-ridership clusters) and coldspots (low-ridership clusters).
 
 **Step 3: Spatio-Temporal Analysis (EHSA)**
 
@@ -118,7 +117,7 @@ write_rds(mpsz_cl,
           "data/rds/mpsz_cl.rds")
 ```
 
-#### 2.2.3  O-D Bus Trips
+#### 2.2.3 O-D Bus Trips
 
 ```{r}
 odbus <- read_csv("data/LTADataMall/origin_destination_bus_202508.csv")
@@ -167,8 +166,7 @@ hexagon <- st_make_grid(mpsz_cl,
 
 ##### 2.2.3.4 Filtering hexagons with bus stops
 
-`n_collisions` counts the number of bus stops in each hexagon.
-Only retain hexagons with bus stops.
+`n_collisions` counts the number of bus stops in each hexagon. Only retain hexagons with bus stops.
 
 ```{r}
 hexagon$n_collisions =
@@ -245,7 +243,7 @@ trips_agg <- trips %>%
 kable(head(trips_agg))
 ```
 
-##### 2.2.5.2 Relational Join 
+##### 2.2.5.2 Relational Join
 
 Join *trips_agg* with *hexagon* on "HEX_ID".
 
@@ -325,7 +323,7 @@ trips_agg_peak <- trips_peak %>%
 kable(head(trips_agg_peak))
 ```
 
-##### 2.2.6.2 Relational Join 
+##### 2.2.6.2 Relational Join
 
 Join *trips_agg_peak* with *hexagon* on "HEX_ID".
 
@@ -378,7 +376,7 @@ trips_agg_hourly <- trips %>%
 kable(head(trips_agg_hourly))
 ```
 
-##### 2.2.7.2 Relational Join 
+##### 2.2.7.2 Relational Join
 
 Join *trips_agg_hourly* with hexagon on "HEX_ID".
 
@@ -548,11 +546,11 @@ tmap_arrange(morning_map, afternoon_map,
              ncol = 2)
 ```
 
-For the Weekday Morning and Afternoon peak periods, we see a hot spot in the West and North. Whereas in the Weekend/Holiday peak and Off-peak hours, we see additional hotspots appearing in the North, and also East. 
+For the Weekday Morning and Afternoon peak periods, we see a hot spot in the West and North. Whereas in the Weekend/Holiday peak and Off-peak hours, we see additional hotspots appearing in the North, and also East.
 
 ## 3 Local Measures of Spatial Autocorrelation (LMSA)
 
-In this section, we will use **Local Measures of Spatial Autocorrelation (LMSA)**, specifically the Local Moran’s I, Local Geary’s C, and the Getis-Ord Gi* statistics, to identify statistically significant static hotspots (high-ridership clusters) and coldspots (low-ridership clusters) for each defined time interval. 
+In this section, we will use **Local Measures of Spatial Autocorrelation (LMSA)**, specifically the Local Moran’s I, Local Geary’s C, and the Getis-Ord Gi\* statistics, to identify statistically significant static hotspots (high-ridership clusters) and coldspots (low-ridership clusters) for each defined time interval.
 
 ### 3.1 Computing Contiguity Spatial Weights
 
@@ -569,7 +567,7 @@ wm_q <- hexagon_trips %>%
 summary(wm_q$nb)
 ```
 
-The summary report above shows that there are 799 hexagons with an average of 4.8 neighbours per hexagon. The connectivity distribution shows 352 hexagons have the maximum of 6 neighbours, while only 8 are connected with 1 neighbour. 
+The summary report above shows that there are 799 hexagons with an average of 4.8 neighbours per hexagon. The connectivity distribution shows 352 hexagons have the maximum of 6 neighbours, while only 8 are connected with 1 neighbour.
 
 ### 3.2 Row-standardised weights matrix
 
@@ -585,8 +583,8 @@ To identify localised spatial patterns of similarity (clustering), we compute Lo
 
 The resulting *Ii* value measures the degree of similarity between a hexagon and its neighbors. Its interpretation is direct:
 
--   A value of *Ii* > 0 indicates strong positive autocorrelation (High-High or Low-Low clustering/similarity).
--   A value of *Ii* < 0 indicates strong negative autocorrelation (High-Low or Low-High dissimilarity/outliers).
+-   A value of *Ii* \> 0 indicates strong positive autocorrelation (High-High or Low-Low clustering/similarity).
+-   A value of *Ii* \< 0 indicates strong negative autocorrelation (High-Low or Low-High dissimilarity/outliers).
 -   A value near 0 suggests no spatial autocorrelation.
 
 We will use the associated p-values to generate a final LISA Cluster Map, which visually classifies all statistically significant hot spots, cold spots, and spatial outliers.
@@ -711,7 +709,7 @@ ggplot(data = lisa,
   theme_minimal()
 ```
 
-From the scatterplot, we can observe that the trend line shows a positive relationship between Total_Trips and its spatial lag version, indicating positive global spatial autocorrelation. 
+From the scatterplot, we can observe that the trend line shows a positive relationship between Total_Trips and its spatial lag version, indicating positive global spatial autocorrelation.
 
 ```{r}
 ggplot(data = lisa, 
@@ -890,7 +888,7 @@ The resulting *Ci* value provides a measure of dissimilarity between a hexagon a
 
 #### 3.4.1 Creating Local Geary's C statistics
 
-First, we apply log transformation to *total_trips* as it is right skewed. 
+First, we apply log transformation to *total_trips* as it is right skewed.
 
 A right-skewed distribution will affect Geary's C calculation, as very high values will dominate, affecting the squared difference calculation, and local clustering of moderate values may not be detected.
 
@@ -1030,32 +1028,32 @@ tmap_arrange(geary_strength_map, geary_clusters_map,
              heights = c(1, 1))
 ```
 
-From the visualisations of Local Geary's C values, we can see that the bus ridership on the West and North exhibits **strong positive similarity** (dark blue shades), where majority of hexagons have *total_trips* similar to their neighbours (i.e. Low-Low or High-High clustering). Whereas in the South and Northeast, there exists some areas of **strong negative similarity** (dark orange shades). 
+From the visualisations of Local Geary's C values, we can see that the bus ridership on the West and North exhibits **strong positive similarity** (dark blue shades), where majority of hexagons have *total_trips* similar to their neighbours (i.e. Low-Low or High-High clustering). Whereas in the South and Northeast, there exists some areas of **strong negative similarity** (dark orange shades).
 
 A closer look at the Geary clusters show that the West and North areas exhibit Low-High dissimilarity (pink shades), which means that there are cold spots in these areas.
 
-### 3.5 Computing Getis-Ord Gi* 
+### 3.5 Computing Getis-Ord Gi\*
 
-To identify localised spatial clusters of extreme values (hot spots and cold spots), we compute the Getis-Ord Gi* statistic. This is achieved using the `st_local_g()` function from the **sfdep** package. The resulting Gi* value provides a measure of similarity (clustering), specifically comparing a hexagon's value to its neighbours, including itself. 
+To identify localised spatial clusters of extreme values (hot spots and cold spots), we compute the Getis-Ord Gi\* statistic. This is achieved using the `st_local_g()` function from the **sfdep** package. The resulting Gi\* value provides a measure of similarity (clustering), specifically comparing a hexagon's value to its neighbours, including itself.
 
 Its interpretation is as such:
 
--   A positive and large Gi* value indicates positive autocorrelation (High-High clustering/Hot Spot).
--   A negative and large Gi* value indicates positive autocorrelation (Low-Low clustering/Cold Spot).
--   A Gi* value near 0 indicates no spatial autocorrelation; the values are randomly distributed.
+-   A positive and large Gi\* value indicates positive autocorrelation (High-High clustering/Hot Spot).
+-   A negative and large Gi\* value indicates positive autocorrelation (Low-Low clustering/Cold Spot).
+-   A Gi\* value near 0 indicates no spatial autocorrelation; the values are randomly distributed.
 
-We will use the associated p-values and the Z-scores derived from Gi* to generate a final map that visually pinpoints the statistically significant hot spots and cold spots of bus ridership.
+We will use the associated p-values and the Z-scores derived from Gi\* to generate a final map that visually pinpoints the statistically significant hot spots and cold spots of bus ridership.
 
 #### 3.5.1 Computing distance weight matrix
 
-Getis-Ord Gi* analysis defines neighbours based on distance, and there are 2 types of distance-based proximity matrices that can be utilised:
+Getis-Ord Gi\* analysis defines neighbours based on distance, and there are 2 types of distance-based proximity matrices that can be utilised:
 
 -   fixed distance weight matrix,
 -   adaptive distance weight matrix
 
 ##### 3.5.1.1 Computing adaptive distance weights
 
-For bus ridership analysis in Singapore, fixed distance weights capture **natural variations** where dense hexagons have more neighbouring stops within a fixed radius, smoothing local relationships. 
+For bus ridership analysis in Singapore, fixed distance weights capture **natural variations** where dense hexagons have more neighbouring stops within a fixed radius, smoothing local relationships.
 
 In contrast, adaptive distance weights ensure consistent analysis by maintaining the same number of neighbors (k-nearest) for each hexagon, providing **uniform spatial context** regardless of urban density, which helps isolate true ridership patterns from structural biases of the transport infrastructure.
 
@@ -1074,7 +1072,7 @@ hexagon_trips_adw <- hexagon_trips %>%
 
 #### 3.5.2 Computing local Gi\*
 
-Local Gi* is a Getis-Ord statistic that identifies statistically significant hot spots (clusters of high values) and cold spots (clusters of low values) in spatial data. It calculates a Z-score and p-value for each location by comparing local neighborhood sums to the global average, determining whether observed spatial clustering occurs by random chance.
+Local Gi\* is a Getis-Ord statistic that identifies statistically significant hot spots (clusters of high values) and cold spots (clusters of low values) in spatial data. It calculates a Z-score and p-value for each location by comparing local neighborhood sums to the global average, determining whether observed spatial clustering occurs by random chance.
 
 ```{r}
 HCSA_adw <- hexagon_trips_adw %>%
@@ -1087,7 +1085,7 @@ HCSA_adw <- hexagon_trips_adw %>%
 
 #### 3.5.3 Preparing and Visualising HCSA Map
 
-##### 3.5.3.1  Mapping Gi\* with adaptive distance weights
+##### 3.5.3.1 Mapping Gi\* with adaptive distance weights
 
 Thematic mapping functions of tmaps are used to prepare a choropleth map showing the distribution of Gi\* values.
 
@@ -1147,160 +1145,287 @@ tm_shape(HCSA_adw) +
   tm_title("Gi* Hot and Cold Spots by Intensity (p ≤ 0.05)")
 ```
 
-From the visualisation map, we can see that there are statistically significant **Very Strong Hot Spots** in the West, North and East areas (Gi\*>0). The Gi\* values show that high bus ridership values in these regions is unlikely to occur by random chance (p < 0.05), representing genuine spatial patterns rather than random distributions.
+From the visualisation map, we can see that there are statistically significant **Very Strong Hot Spots** in the West, North and East areas (Gi\*\>0). The Gi\* values show that high bus ridership values in these regions is unlikely to occur by random chance (p \< 0.05), representing genuine spatial patterns rather than random distributions.
 
 ## 4 Emerging Hot Spot Analysis (EHSA)
 
-**Emerging Hot Spot Analysis (EHSA)** is a spatio-temporal technique that identifies how bus ridership clusters are changing across Singapore's hexagon grid over time. 
+**Emerging Hot Spot Analysis (EHSA)** is a spatio-temporal technique that identifies how bus ridership clusters are changing across Singapore's hexagon grid over time.
 
 The process works by first converting peak ridership data into a space-time cube. For each period, the Getis-Ord Gi\* statistic identifies Hot and Cold Spots. The Mann-Kendall trend test is then applied to the sequence of these Gi\* values for every hexagon to categorise areas of new/growing/persistent hot/cold spots, providing deeper insight for bus demand planning.
 
-### 4.1 Check Trips per Peak Period Dataset
-
-Before creating a Space-Time cube, we will check to ensure every hexagon has data for all time periods and that there are no duplicate location-time combinations.
-
-```{r}
-# See the distribution of time periods per location
-time_counts <- hexagon_trips_peak %>%
-  count(HEX_ID) %>%
-  arrange(n)
-
-cat("Time periods per location:\n")
-print(table(time_counts$n))
-
-# Get the total number of unique time periods
-n_time_periods <- length(unique(hexagon_trips_peak$Peak_Period))
-cat("Total number of time periods:", n_time_periods, "\n")
-
-# See which locations are missing time periods
-locations_with_all_periods <- hexagon_trips_peak %>%
-  count(HEX_ID) %>%
-  filter(n == n_time_periods) %>%
-  pull(HEX_ID)
-
-cat("Locations with all time periods:", length(locations_with_all_periods), "\n")
-cat("Locations missing some time periods:", nrow(time_counts) - length(locations_with_all_periods), "\n")
-```
-
-There are 7 hexagons missing some time periods, hence we will filter to only hexagons with all time periods.
-
-```{r}
-hexagon_trips_peak_filtered <- hexagon_trips_peak %>%
-  filter(HEX_ID %in% locations_with_all_periods)
-```
-
-### 4.1 Creating a Time Series Cube
+### 4.1 Creating a Space-Time Cube
 
 We use `spacetime()` of **sfdep** package to create an spatio-temporal cube, and verify its object type.
 
+#### 4.1.1 Cleaning hexagon_trips_peak and hexagon Datasets
+
 ```{r}
-hexagon_trips_peak_st <- sfdep::as_spacetime(
-  hexagon_trips_peak_filtered,
-  "HEX_ID", 
-  "Peak_Period"
+# Add numeric time_id to establish temporal order
+hexagon_trips_peak <- hexagon_trips_peak %>%
+  mutate(
+    time_id = case_when(
+      Peak_Period == "Weekday Morning Peak" ~ 1L,
+      Peak_Period == "Weekday Afternoon Peak" ~ 2L,
+      Peak_Period == "Weekend/Holiday Peak" ~ 3L,
+      Peak_Period == "Off-Peak" ~ 4L,
+      TRUE ~ NA_integer_  # Handle any unexpected values
+    )
+  ) %>%
+  # Reorder columns for better readability
+  select(HEX_ID, time_id, Peak_Period, total_trips, geometry)
+
+# Show the updated data with time_id
+kable(head(hexagon_trips_peak))
+```
+
+```{r}
+kable(head(hexagon))
+```
+
+```{r}
+trips_peak_st <- spacetime(hexagon_trips_peak, hexagon,
+                      .loc_col = "HEX_ID",
+                      .time_col = "time_id")
+is_spacetime_cube(trips_peak_st)
+```
+
+From the initial run of Space-Time cube, there is an error stating that some hexagons does not have data for all 4 time periods.
+
+A perfect cube must have this property: total rows = (number of unique HEX_IDs) × (number of unique time_id values)
+
+```{r}
+n_locations <- n_distinct(hexagon_trips_peak$HEX_ID)
+n_timeperiods <- n_distinct(hexagon_trips_peak$time_id)
+n_rows <- nrow(hexagon_trips_peak)
+
+cat("Locations:", n_locations, "\n")
+cat("Time periods:", n_timeperiods, "\n")
+cat("Rows:", n_rows, "\n")
+cat("Expected rows:", n_locations * n_timeperiods, "\n")
+```
+
+From the result, we observe that the existing rows is fewer than expected rows. Hence we print missing combinations of HEX_ID and time_id.
+
+```{r}
+missing_combinations <- hexagon_trips_peak %>%
+  count(HEX_ID, time_id) %>%
+  complete(HEX_ID, time_id) %>%
+  filter(is.na(n))
+
+cat("Missing combinations:", nrow(missing_combinations), "\n")
+print(missing_combinations)
+```
+
+We will fill in the missing hexagons with 0 values.
+
+```{r}
+# Get all possible combinations
+all_combinations <- tidyr::crossing(
+  HEX_ID = unique(hexagon_trips_peak$HEX_ID),
+  time_id = unique(hexagon_trips_peak$time_id)
 )
 
-is_spacetime_cube(hexagon_trips_peak_st)
-cat("Balanced spacetime cube with", nrow(hexagon_trips_peak_st), "rows\n")
+# Merge and fill missing with 0
+hexagon_trips_peak_balanced <- all_combinations %>%
+  left_join(hexagon_trips_peak, by = c("HEX_ID", "time_id")) %>%
+  mutate(total_trips = ifelse(is.na(total_trips), 0, total_trips)) %>%
+  arrange(HEX_ID, time_id)
 ```
 
-### 4.2 
+We will then rebuild the Space-Time cube.
 
 ```{r}
-head(hexagon_trips_peak)
+trips_peak_st <- spacetime(
+  hexagon_trips_peak_balanced,
+  hexagon,
+  .loc_col = "HEX_ID",
+  .time_col = "time_id"
+)
+
+is_spacetime_cube(trips_peak_st)
 ```
 
+### 4.2 Computing Gi\*
+
+#### 4.2.1 Deriving the spatial weights
+
+We will derive the inverse distance weights as below.
+
 ```{r}
+#| warning: false
+
+trips_peak_nb <- trips_peak_st %>%
+  activate("geometry") %>%
+  mutate(nb = include_self(
+    st_contiguity(geometry)),
+    wt = st_inverse_distance(nb, 
+                             geometry, 
+                             scale = 1,
+                             alpha = 1),
+    .before = 1) %>%
+  set_nbs("nb") %>%
+  set_wts("wt")
 ```
 
+#### 4.2.2 Calculating local Gi\*
+
+To calculate local Gi\* statistics for each time period, we group the data by *time_id* and apply the `local_gstar_perm()` function, then unnest the results.
+
 ```{r}
+gi_stars <- trips_peak_nb %>% 
+  group_by(time_id) %>% 
+  mutate(gi_star = local_gstar_perm(
+    total_trips, nb, wt)) %>% 
+  tidyr::unnest(gi_star)
 ```
 
-```{r}
-```
+### 4.3 Mann-Kendall Test
+
+The Mann-Kendall test detects monotonic trends in bus ridership patterns over time:
+
+-   H₀: No monotonic trend in ridership
+-   H₁: Monotonic trend present
+
+Interpretation:
+
+-   Reject H₀ if p-value \< significance level (e.g., 0.05)
+-   Tau statistic (-1 to 1):
+    -   -1: Perfectly decreasing ridership trend
+    -   +1: Perfectly increasing ridership trend
+    -   0: No trend
+
+This identifies whether bus ridership is systematically increasing or decreasing across the analyzed time periods.
+
+#### 4.3.1 Mann-Kendall Test on Gi\*
+
+We first look at 1 hexagon, H0001.
 
 ```{r}
-```
-
-```{r}
-```
-
-```{r}
-```
-
-```{r}
-```
-
-```{r}
-```
-
-```{r}
-```
-
-```{r}
-```
-
-
-
-```{r}
-```
-
-```{r}
-```
-
-```{r}
-```
-
-```{r}
-```
-
-```{r}
-```
-
-```{r}
-```
-
-```{r}
-```
-
-```{r}
-```
-
-```{r}
-```
-
-```{r}
-```
-
-```{r}
-```
-
-```{r}
-```
-
-```{r}
-```
-
-```{r}
+cbg <- gi_stars %>% 
+  ungroup() %>% 
+  filter(HEX_ID == "H0001") |> 
+  select(HEX_ID, time_id, gi_star)
 ```
 
 ```{r}
+ggplot(data = cbg, 
+       aes(x = time_id, 
+           y = gi_star)) +
+  geom_line() +
+  theme_light()
+```
+
+#### 4.3.2 Interactive Mann-Kendall Plot
+
+```{r}
+p <- ggplot(data = cbg, 
+       aes(x = time_id, 
+           y = gi_star)) +
+  geom_line() +
+  theme_light()
+
+ggplotly(p)
+```
+
+#### 4.3.3 Printing Mann-Kendall test report
+
+```{r}
+cbg %>%
+  summarise(mk = list(
+    unclass(
+      Kendall::MannKendall(gi_star)))) %>% 
+  tidyr::unnest_wider(mk)
+```
+
+In the above result, sl is the **p-value**. As p-value > 0.05, we will not reject the null hypothesis that there is no monotonic trend in ridership.
+
+#### 4.3.4 Mann-Kendall test dataframe
+
+We will replicate the study for the entire dataframe by grouping by *HEX_ID*.
+
+```{r}
+ehsa <- gi_stars %>%
+  group_by(HEX_ID) %>%
+  summarise(mk = list(
+    unclass(
+      Kendall::MannKendall(gi_star)))) %>%
+  tidyr::unnest_wider(mk)
+head(ehsa)
+```
+
+To showcase emerging hot/cold spots, we can sort by significance level and tau.
+
+```{r}
+emerging <- ehsa %>% 
+  arrange(sl, abs(tau)) %>% 
+  slice(1:10)
+head(emerging)
+```
+
+### 4.4 Performing Emerging Hotspot Analysis
+
+We will perform EHSA analysis by using `emerging_hotspot_analysis()` of **sfdep** package. 
+
+The `emerging_hotspot_analysis()` function requires:
+-   x: spacetime object (e.g., trips_peak_st)
+-   .var: variable name (e.g., "total_trips")
+-   k: time lags (default: 1)
+-   nsim: number of simulations
+
+```{r}
+ehsa <- emerging_hotspot_analysis(
+  x = trips_peak_st, 
+  .var = "total_trips", 
+  k = 1, 
+  nsim = 99
+)
+```
+
+#### 4.4.1 Visualising the distribution of EHSA classes
+
+We can identify the prevalence of each EHSA class.
+
+```{r}
+ggplot(data = ehsa,
+       aes(x = classification)) +
+  geom_bar()
+```
+
+From the results, we can identify that for most of the hexagons, there was no pattern identified. 
+
+#### 4.4.2 Visualising EHSA
+
+We will join ehsa and hexagon data using HEX_ID, to visualise the geographic distribution of EHSA classes.
+
+```{r}
+hexagon_ehsa <- hexagon %>%
+  left_join(ehsa,
+            by = join_by(HEX_ID == location))
 ```
 
 ```{r}
+ehsa_sig <- hexagon_ehsa %>%
+  filter(p_value < 0.05) %>%
+  st_as_sf()
+
+tmap_mode("plot")
+
+if (nrow(ehsa_sig) > 0) {
+  tm_shape(hexagon_ehsa) +
+    tm_polygons() +
+    tm_borders(fill_alpha = 0.5) +
+    tm_shape(ehsa_sig) +
+    tm_fill("classification") + 
+    tm_borders(fill_alpha = 0.4)
+} else {
+  cat("⚠️ No significant EHSA clusters (p < 0.05), plot skipped.\n")
+}
 ```
 
-```{r}
-```
+There is an error occurring, and we conduct a check on the significant values and find that there are no polygons where p_value < 0.05.
 
 ```{r}
+nrow(ehsa_sig)
 ```
 
-```{r}
-```
-
-```{r}
-```
-
-```{r}
-```
+As Peak Hour Period dataset may have not enough datapoints for EHSA (only 4 time values), we can consider looking at trips per hour instead.
