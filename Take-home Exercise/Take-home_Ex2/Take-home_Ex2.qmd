@@ -38,9 +38,9 @@ We aim to move beyond basic mapping to identify **hotspots** (areas of high ride
 **Step 1: Data Aggregation and Spatial Encoding**
 First, the raw bus ridership data (collected via smart cards and GPS) will be preprocessed and aggregated into a suitable spatial framework. This involves calculating the total number of passenger trips by origin and destination for defined time intervals (e.g., morning and evening peak hours, off-peak) and aggregating these counts to a defined spatial unit.
 
-**Step 2: Static Hotspot and Coldspot Identification (LMSA)**
+**Step 2: Local Measures of Spatial Autocorrelation (LMSA)**
 
-Next, Local Measures of Spatial Autocorrelation (LMSA), specifically the Getis-Ord Gi∗ statistic, will be used to identify statistically significant static hotspots (high-ridership clusters) and coldspots (low-ridership clusters) for each defined time interval. 
+Next, Local Measures of Spatial Autocorrelation (LMSA), specifically the Local Moran’s I, Local Geary’s C, and the Getis-Ord Gi* statistics, will be used to identify statistically significant static hotspots (high-ridership clusters) and coldspots (low-ridership clusters). 
 
 **Step 3: Spatio-Temporal Analysis (EHSA)**
 
@@ -53,9 +53,10 @@ Emerging Hot Spot Analysis (EHSA) will be conducted by organising the static Gi�
 The following R packages are used:
 
 -   `spdep`: compute spatial weights and global and local spatial autocorrelation statistics
+-   `Kendall`: conduct non-parametric trend tests and detects temporal trends in spatial patterns
 
 ```{r}
-pacman::p_load(tidyverse, sf, spdep, tmap, knitr, httr, rvest)
+pacman::p_load(tidyverse, sf, spdep, sfdep, tmap, knitr, httr, rvest, plotly, Kendall)
 ```
 
 ### 2.2 Importing Data
@@ -229,7 +230,7 @@ kable(head(trips))
 
 #### 2.2.5 Create Total Trips per Hexagon dataset
 
-In this section, we will join *hexagon* spatial data and *trips* aspatial data for Local Measures of Spatial Association (LMSA) analysis. This is to allow us to view the spatial distribution of total bus trips.
+This section prepares the data for **Local Measures of Spatial Association (LMSA)** analysis. We join the hexagon spatial data with the aggregated total trips data within each hexagon using **HEX_ID**. This dataset allows us to effectively visualise the spatial distribution of total bus ridership.
 
 ##### 2.2.5.1 Aggregate Trip Data by Hexagon
 
@@ -256,42 +257,162 @@ hexagon_trips <- hexagon %>%
 kable(head(hexagon_trips))
 ```
 
-#### 2.2.5 Create Total Trips per Hexagon dataset
+##### 2.2.5.3 Removing Disjointed Subgraphs from Total Trips Data
 
-This section prepares the data for **Emerging Hot Spot Analysis (EHSA)**. We perform a spatial join to link the `hexagon` grid geometries with the aggregated bus trips data. By preserving the `HOUR_OF_DAY` dimension, we successfully build the spatio-temporal dataset required for constructing the space-time cube.
+After creating the main analytical dataset, we identify and remove disjointed subgraphs to ensure a connected spatial network for accurate spatial autocorrelation analysis.
 
-##### 2.2.5.1 Aggregate Trip Data by Hexagon
+```{r}
+# Create initial weights to identify connected components
+hexagon_trips_weights <- hexagon_trips %>%
+  mutate(nb = st_contiguity(geometry))
+
+# Identify connected components
+components <- n.comp.nb(hexagon_trips_weights$nb)
+component_sizes <- table(components$comp.id)
+
+print("Connected component sizes:")
+print(component_sizes)
+
+# Keep only the largest connected component
+main_component_id <- which.max(component_sizes)
+hexagon_trips <- hexagon_trips[components$comp.id == main_component_id, ]
+
+cat("Retained component", main_component_id, "with", nrow(hexagon_trips), "hexagons\n")
+cat("Removed", sum(component_sizes) - nrow(hexagon_trips), "hexagons from disjoint subgraphs\n")
+```
+
+#### 2.2.6 Create Total Trips per Hexagon and Peak Hour Period dataset
+
+This section prepares the data for **Emerging Hot Spot Analysis (EHSA)**. We perform a spatial join to link the `hexagon` grid geometries with the aggregated bus trips data. By preserving the `HOUR_OF_DAY` dimension and calculating the total trips in each Peak Hour Period, we successfully build the spatio-temporal dataset required for constructing the space-time cube.
+
+##### 2.2.6.1 Aggregate Trip Data by Hexagon
 
 Within *trips* dataset, we calculate the total TRIPS per hexagon ("HEX_ID").
 
 ```{r}
-trips_agg <- trips %>%
-  group_by(HEX_ID) %>%
+trips_peak <- trips %>%
+  mutate(
+    # Ensure DAY_TYPE is a character/factor for matching
+    DAY_TYPE = as.character(DAY_TYPE),
+    # Ensure HOUR_OF_DAY is numeric for range checking (e.g., 6, 9, 17)
+    HOUR_OF_DAY = as.numeric(HOUR_OF_DAY)
+  ) %>%
+  
+  mutate(
+    Peak_Period = case_when(
+      # WEEKDAY Morning Peak: 6am to 9am (inclusive)
+      DAY_TYPE == "WEEKDAY" & HOUR_OF_DAY >= 6 & HOUR_OF_DAY <= 9 ~ "Weekday Morning Peak",
+      # WEEKDAY Afternoon Peak: 5pm to 8pm (inclusive)
+      DAY_TYPE == "WEEKDAY" & HOUR_OF_DAY >= 17 & HOUR_OF_DAY <= 20 ~ "Weekday Afternoon Peak",
+      # WEEKEND/HOLIDAY Peak: 11am to 8pm (inclusive)
+      (DAY_TYPE == "WEEKENDS/HOLIDAY" | DAY_TYPE == "HOLIDAY") & HOUR_OF_DAY >= 11 & HOUR_OF_DAY <= 20 ~ "Weekend/Holiday Peak",
+      # Everything else is Off-Peak
+      TRUE ~ "Off-Peak"
+    )
+  )
+
+kable(head(trips_peak))
+```
+
+```{r}
+trips_agg_peak <- trips_peak %>%
+  group_by(HEX_ID, Peak_Period) %>%
+  summarise(
+    total_trips = sum(TRIPS, na.rm = TRUE),
+    .groups = 'drop'
+  )
+
+kable(head(trips_agg_peak))
+```
+
+##### 2.2.6.2 Relational Join 
+
+Join *trips_agg_peak* with *hexagon* on "HEX_ID".
+
+```{r}
+hexagon_trips_peak <- hexagon %>%
+  inner_join(trips_agg_peak, by = "HEX_ID") %>%
+  mutate(total_trips = replace_na(total_trips, 0))
+
+kable(head(hexagon_trips_peak))
+```
+
+##### 2.2.6.3 Removing Disjointed Subgraphs from Peak Hour Data
+
+We apply the same cleaning to the peak hour dataset to maintain consistency across all analyses.
+
+```{r}
+# Create initial weights to identify connected components
+hexagon_trips_peak_weights <- hexagon_trips_peak %>%
+  mutate(nb = st_contiguity(geometry))
+
+# Identify connected components
+components_peak <- n.comp.nb(hexagon_trips_peak_weights$nb)
+component_sizes_peak <- table(components_peak$comp.id)
+
+print("Connected component sizes for peak data:")
+print(component_sizes_peak)
+
+# Keep only the largest connected component
+main_component_id_peak <- which.max(component_sizes_peak)
+hexagon_trips_peak <- hexagon_trips_peak[components_peak$comp.id == main_component_id_peak, ]
+
+cat("Retained component", main_component_id_peak, "with", nrow(hexagon_trips_peak), "hexagons\n")
+cat("Removed", sum(component_sizes_peak) - nrow(hexagon_trips_peak), "hexagons from disjoint subgraphs\n")
+```
+
+#### 2.2.7 Create Total Trips per Hexagon per Hour Dataset
+
+This section prepares the data for **Emerging Hot Spot Analysis (EHSA)**. We aggregate trips by both hexagon and hour to create a spatio-temporal dataset that will form the space-time cube.
+
+##### 2.2.7.1 Aggregate Trip Data by Hexagon and Hour
+
+Within *trips* dataset, we calculate the total TRIPS per hexagon ("HEX_ID") per hour ("HOUR_OF_DAY").
+
+```{r}
+trips_agg_hourly <- trips %>%
+  group_by(HEX_ID, HOUR_OF_DAY) %>%
   summarise(total_trips = sum(TRIPS, na.rm = TRUE),
             .groups = 'drop')
 
-kable(head(trips_agg))
+kable(head(trips_agg_hourly))
 ```
 
-##### 2.2.5.2 Relational Join 
+##### 2.2.7.2 Relational Join 
 
-Join *trips_agg* with *hexagon* on "HEX_ID".
+Join *trips_agg_hourly* with hexagon on "HEX_ID".
 
 ```{r}
-hexagon_trips <- hexagon %>%
-  inner_join(trips_agg, by = "HEX_ID") %>%
+hexagon_trips_hourly <- hexagon %>%
+  inner_join(trips_agg_hourly, by = "HEX_ID") %>%
   mutate(total_trips = replace_na(total_trips, 0))
 
-kable(head(hexagon_trips))
+kable(head(hexagon_trips_hourly))
 ```
 
-## 3 Local Measures of Spatial Autocorrelation (LMSA)
-
-### 3.1 Visualising Bus Ridership in Singapore
-
-Using **tmap**, we can plot two choropleth maps using equal interval (i.e equal) and quantile (i.e. quantile) classification methods.
+##### 2.2.7.3 Removing Disjointed Subgraphs from Hourly Data
 
 ```{r}
+hexagon_trips_hourly_clean <- hexagon_trips_hourly[components$comp.id == main_component_id, ]
+
+cat("Original hourly dataset:", nrow(hexagon_trips_hourly), "hexagon-hour combinations\n")
+cat("Cleaned hourly dataset: ", nrow(hexagon_trips_hourly_clean), "hexagon-hour combinations\n")
+cat("Removed", nrow(hexagon_trips_hourly) - nrow(hexagon_trips_hourly_clean), "hexagon-hour combinations from disjoint subgraphs\n")
+```
+
+#### 2.2.8 Visualising Bus Ridership in Singapore
+
+Using **tmap**, we can plot and visualise multiple choropleth maps using equal, quantile, kmeans, headtails classification methods.
+
+##### 2.2.8.1 Plotting Overall Bus Ridership
+
+```{r}
+small_legend_layout <- tm_layout(
+  legend.text.size = 0.4, 
+  legend.title.size = 0.6,
+  legend.position = c("left", "bottom") 
+)
+
 equal <- tm_shape(hexagon_trips) +
   tm_polygons(fill = "total_trips",
               fill.scale = tm_scale_intervals(
@@ -303,7 +424,8 @@ equal <- tm_shape(hexagon_trips) +
                 position = tm_pos_in(
                   "left", "bottom"))) + 
   tm_borders(fill_alpha = 0.5) +
-  tm_title("Equal interval classification")
+  tm_title("Equal interval classification") +
+  small_legend_layout
 
 quantile <- tm_shape(hexagon_trips) +
   tm_polygons(fill = "total_trips",
@@ -316,13 +438,776 @@ quantile <- tm_shape(hexagon_trips) +
                 position = tm_pos_in(
                   "left", "bottom"))) + 
   tm_borders(fill_alpha = 0.5) +
-  tm_title("Quantile interval classification")
+  tm_title("Quantile interval classification") +
+  small_legend_layout
+
+kmeans <- tm_shape(hexagon_trips) +
+  tm_polygons(fill = "total_trips",
+              fill.scale = tm_scale_intervals(
+                style = "kmeans",
+                n = 5,
+                values = "brewer.blues"),
+              fill.legend = tm_legend(
+                title = "Total Bus Trips",
+                position = tm_pos_in(
+                  "left", "bottom"))) + 
+  tm_borders(fill_alpha = 0.5) +
+  tm_title("K-means interval classification") +
+  small_legend_layout
+
+headtails <- tm_shape(hexagon_trips) +
+  tm_polygons(fill = "total_trips",
+              fill.scale = tm_scale_intervals(
+                style = "headtails",
+                n = 5,
+                values = "brewer.blues"),
+              fill.legend = tm_legend(
+                title = "Total Bus Trips",
+                position = tm_pos_in(
+                  "left", "bottom"))) + 
+  tm_borders(fill_alpha = 0.5) +
+  tm_title("Headtails interval classification") +
+  small_legend_layout
 
 tmap_arrange(equal, 
-             quantile, 
-             asp=1, 
+             quantile,
+             kmeans,
+             headtails,
+             asp=2, 
              ncol=2)
 ```
+
+The visualisations show that the bus ridership data is heavily skewed, with a few areas exhibiting extremely high trip counts (a 'heavy tail' distribution).
+
+Across the four methods, **Headtails interval classification** provides the most meaningful representation, as it effectively separates the high-ridership hot spots from the majority of lower-activity areas.
+
+The **Headtails interval classification** map pinpoints major hotspots in the North, East, Central and West.
+
+##### 2.2.8.2 Plotting Bus Ridership by Peak Period
+
+We plot the Bus Ridership in Singapore by Peak Period using **Headtails interval classification** to cater to our skewed data distribution.
+
+```{r}
+# Filter data for each peak period
+morning_peak <- hexagon_trips_peak %>% 
+  filter(Peak_Period == "Weekday Morning Peak")
+
+afternoon_peak <- hexagon_trips_peak %>% 
+  filter(Peak_Period == "Weekday Afternoon Peak")
+
+weekend_peak <- hexagon_trips_peak %>% 
+  filter(Peak_Period == "Weekend/Holiday Peak")
+
+off_peak <- hexagon_trips_peak %>% 
+  filter(Peak_Period == "Off-Peak")
+
+# Create headtails maps for each period
+morning_map <- tm_shape(morning_peak) +
+  tm_polygons(fill = "total_trips",
+              fill.scale = tm_scale_intervals(
+                style = "headtails",
+                n = 5,
+                values = "brewer.blues"),
+              fill.legend = tm_legend(title = "Total Trips")) + 
+  tm_borders(col = "grey", alpha = 0.3) +
+  tm_title("Weekday Morning Peak (6-9am)")
+
+afternoon_map <- tm_shape(afternoon_peak) +
+  tm_polygons(fill = "total_trips",
+              fill.scale = tm_scale_intervals(
+                style = "headtails",
+                n = 5,
+                values = "brewer.blues"),
+              fill.legend = tm_legend(title = "Total Trips")) + 
+  tm_borders(col = "grey", alpha = 0.3) +
+  tm_title("Weekday Afternoon Peak (5-8pm)")
+
+weekend_map <- tm_shape(weekend_peak) +
+  tm_polygons(fill = "total_trips",
+              fill.scale = tm_scale_intervals(
+                style = "headtails",
+                n = 5,
+                values = "brewer.blues"),
+              fill.legend = tm_legend(title = "Total Trips")) + 
+  tm_borders(col = "grey", alpha = 0.3) +
+  tm_title("Weekend/Holiday Peak (11am-8pm)")
+
+off_peak_map <- tm_shape(off_peak) +
+  tm_polygons(fill = "total_trips",
+              fill.scale = tm_scale_intervals(
+                style = "headtails",
+                n = 5,
+                values = "brewer.blues"),
+              fill.legend = tm_legend(title = "Total Trips")) + 
+  tm_borders(col = "grey", alpha = 0.3) +
+  tm_title("Off-Peak Hours")
+
+tmap_arrange(morning_map, afternoon_map, 
+             weekend_map, off_peak_map,
+             asp = 1, 
+             ncol = 2)
+```
+
+For the Weekday Morning and Afternoon peak periods, we see a hot spot in the West and North. Whereas in the Weekend/Holiday peak and Off-peak hours, we see additional hotspots appearing in the North, and also East. 
+
+## 3 Local Measures of Spatial Autocorrelation (LMSA)
+
+In this section, we will use **Local Measures of Spatial Autocorrelation (LMSA)**, specifically the Local Moran’s I, Local Geary’s C, and the Getis-Ord Gi* statistics, to identify statistically significant static hotspots (high-ridership clusters) and coldspots (low-ridership clusters) for each defined time interval. 
+
+### 3.1 Computing Contiguity Spatial Weights
+
+First, we will construct spatial weights of the study area for local spatial autocorrelation statistics. The spatial weights is used to define the neighbourhood relationships between the geographical units (i.e. hexagons) in the study area.
+
+```{r}
+wm_q <- hexagon_trips %>%
+  mutate(nb = st_contiguity(geometry),
+         wt = st_weights(nb, style = "W"),
+         .before = 1)
+```
+
+```{r}
+summary(wm_q$nb)
+```
+
+The summary report above shows that there are 799 hexagons with an average of 4.8 neighbours per hexagon. The connectivity distribution shows 352 hexagons have the maximum of 6 neighbours, while only 8 are connected with 1 neighbour. 
+
+### 3.2 Row-standardised weights matrix
+
+Next, we will assign weights to the neighbouring polygons defined by contiguity using the spatial weights matrix (**W**).
+
+In **Row-standardised weights**, we assign an equal fraction of influence to each neighbor, so that the sum of all weights for any given hexagon equals 1 ($1/(\text{Number of Neighbors})$).
+
+This prevents hexagons with many neighbors from unfairly dominating the spatial autocorrelation results and is useful in our highly skewed dataset.
+
+### 3.3 Computing Local Moran's I
+
+To identify localised spatial patterns of similarity (clustering), we compute Local Moran's I, *Ii*, the Local Indicator of Spatial Association (LISA) statistic. This is done using the *st_local_moran()* function from the **sfdep** package.This function requires the hexagon attribute data (e.g., *total_trips*) and the row-standardised spatial weights list (*Wt*).
+
+The resulting *Ii* value measures the degree of similarity between a hexagon and its neighbors. Its interpretation is direct:
+
+-   A value of *Ii* > 0 indicates strong positive autocorrelation (High-High or Low-Low clustering/similarity).
+-   A value of *Ii* < 0 indicates strong negative autocorrelation (High-Low or Low-High dissimilarity/outliers).
+-   A value near 0 suggests no spatial autocorrelation.
+
+We will use the associated p-values to generate a final LISA Cluster Map, which visually classifies all statistically significant hot spots, cold spots, and spatial outliers.
+
+```{r}
+lisa <- wm_q %>% 
+  mutate(local_moran = local_moran(
+    total_trips, nb, wt, nsim = 99),
+         .before = 1) %>%
+  unnest(local_moran)
+
+glimpse(lisa)
+```
+
+#### 3.3.1 Mapping the local Moran’s I values
+
+```{r}
+tm_shape(lisa) +
+  tm_polygons(fill = "ii",
+              fill.scale = tm_scale_intervals(
+                style = "pretty",
+                n = 5,
+                values = "brewer.RdBu"),
+              fill.legend = tm_legend(
+                title = "Local Morans'I",
+                position = tm_pos_out())) + 
+  tm_borders(fill_alpha = 0.5) +
+  tm_title("Local Moran's I of Bus Ridership (Queen's method)")
+```
+
+We can observe that the map is predominantly light-colored (light blue, white, and light orange), with the majority of hexagons falling into the -1 to 1 range.
+
+There are some areas of spatial clustering (dark blue), which indicate High-High clusters, in the East, Central and West areas.
+
+We also observe in the North area some negative spatial autocorrelation (dark orange) which may indicate High-Low clusters.
+
+#### 3.3.2 Mapping local Moran’s I p-values
+
+The previous map shows that there are both positive and negative Ii values. However we can plot the p-values to understand the significance of these observations.
+
+```{r}
+tm_shape(lisa) +
+  tm_polygons(fill = "p_ii", 
+              fill.scale = tm_scale_intervals(
+                breaks = c(-Inf, 0.001, 0.01, 0.05, 0.1, Inf),
+                values = "-brewer.Reds"),
+              fill.legend = tm_legend(
+                title = "p-value",
+      position = tm_pos_out())) + 
+  tm_borders(fill_alpha = 0.5) +
+  tm_title("p-values of Loal Moran's I of Bus Ridership (Queen's method)")
+```
+
+From the p-values in the map, we can observe that the areas with high p-value correspond to the areas of spatial clustering.
+
+#### 3.3.3 Mapping both local Moran’s I values and p-values
+
+```{r}
+#| warning: false
+
+ii.map <- tm_shape(lisa) +
+  tm_polygons(fill = "ii",
+              fill.scale = tm_scale_intervals(
+                style = "pretty",
+                n = 5,
+                values = "brewer.RdBu"),
+              fill.legend = tm_legend(
+                title = "Local Moran's I",
+                position = tm_pos_in(
+                  "left", "bottom"))) + 
+  tm_borders(fill_alpha = 0.5) +
+  tm_title("Local Moran's I of Bus Ridership (Queen's method)")
+
+p_ii.map <- tm_shape(lisa) +
+  tm_polygons(fill = "p_ii", 
+              fill.scale = tm_scale_intervals(
+                breaks = c(-Inf, 0.001, 0.01, 0.05, 0.1, Inf),
+                values = "-brewer.Reds"),
+              fill.legend = tm_legend(
+                title = "p-value",
+      position = tm_pos_in("left", "bottom")
+    )) + 
+  tm_borders(fill_alpha = 0.5) +
+  tm_title("p-values of Local Moran's I of Bus Ridership (Queen's method)")
+
+tmap_arrange(ii.map, p_ii.map, asp=1, ncol=2)
+```
+
+#### 3.3.4 Preparing and Visualising LISA Map
+
+LISA maps includes choropleth maps showing LISA values, Moran scatterplots which depict local spatial autocorrelation for individual locations, and hot spot analysis maps.
+
+##### 3.3.4.1 Plotting Moran scatterplot
+
+The Moran scatterplot visualises the relationship between a variable’s values and the average values of its neighboring locations (its spatial lag) to identify spatial autocorrelation.
+
+`st_lag()` of **sfdep** package is used to calculates the spatial lag of GDPPC given a neighbor (i.e. nb) and weights list (i.e. wt).
+
+```{r}
+lisa <- lisa %>%
+  mutate(lag_trips = st_lag(
+    total_trips, nb, wt),
+    .before = 1) %>%
+  unnest(lag_trips)
+```
+
+The Moran Scatterplot of total_trips is plotted against its spatial lag version.
+
+```{r}
+#| warning: false
+
+ggplot(data = lisa, 
+       aes(x = total_trips, 
+           y = lag_trips)) +
+  geom_point() +
+  geom_smooth(method = "lm", 
+              se = FALSE, 
+              color = "red") +
+  labs(x = "Total_Trips",
+       y = "Spatial Lag of Total_Trips",
+       title = "Moran Scatterplot") +
+  theme_minimal()
+```
+
+From the scatterplot, we can observe that the trend line shows a positive relationship between Total_Trips and its spatial lag version, indicating positive global spatial autocorrelation. 
+
+```{r}
+ggplot(data = lisa, 
+       aes(x = total_trips, 
+           y = lag_trips, 
+           color = mean)) +
+  geom_point(size = 2) +
+  geom_smooth(method = "lm", 
+              se = FALSE, 
+              color = "black") +
+  geom_hline(yintercept=mean(lisa$lag_trips), lty=2) + 
+    geom_vline(xintercept=mean(lisa$total_trips), lty=2) +
+  scale_color_manual(
+    values = c("High-High" = "red", 
+               "Low-Low" = "blue",
+               "Low-High" = "lightblue", 
+               "High-Low" = "pink")) +
+  labs(x = "Total_Trips",
+       y = "Spatial Lag of Total_Trips",
+       title = "Moran Scatterplot with LISA Quadrants") +
+  theme_minimal()
+
+```
+
+From the Moran scatterplot with LISA Quadrants, we can understand that Low-Low and High-High clusters are more prevalant, and there is a high incidence of prominent outliers in the form of Low-High clusters.
+
+##### 3.3.4.2 Plotting Moran scatterplot with standardised variable
+
+scale() is used to center and scale the variable. Centering is implemented by subtracting the mean (omitting NAs), and scaling is done by dividing the (centered) variable by their standard deviations.
+
+```{r}
+lisa <- lisa %>%
+  mutate(z_trips = scale(total_trips),
+         z_lag_trips = scale(lag_trips),
+         .before = 1)
+```
+
+```{r}
+#| warning: false
+
+ggplot(data = lisa, 
+       aes(x = z_trips, 
+           y = z_lag_trips, 
+           color = mean)) +
+  geom_point(size = 2) +
+  geom_smooth(method = "lm", 
+              se = FALSE, 
+              color = "black") +
+  geom_hline(yintercept=mean(lisa$z_lag_trips), lty=2) + 
+    geom_vline(xintercept=mean(lisa$z_trips), lty=2) +
+  scale_color_manual(
+    values = c("High-High" = "red", 
+               "Low-Low" = "blue",
+               "Low-High" = "lightblue", 
+               "High-Low" = "pink")) +
+  labs(x = "Standardised Total_Trips",
+       y = "Standardised Spatial Lag of Total_Trips",
+       title = "Standardised Moran Scatterplot with LISA Quadrants") +
+  theme_minimal()
+```
+
+After applying standardisation, the output findings remain the same.
+
+##### 3.3.4.3 Preparing LISA map classes
+
+We will set a statistical significance level for the local Moran.
+
+```{r}
+signif <- 0.05  
+```
+
+##### 3.3.4.4 Plotting and visualising LISA map
+
+By default, the LISA classes are stored in *mean*, *median* and *pysal* fields of lisa sf data frame. To prepare the LISA map, we will derive a new field called LISA-cluster from either one of these three fields.
+
+A new class 'insignificant' has been added for records where p_ii \> 0.05.
+
+```{r}
+lisa <- lisa %>%
+  mutate(
+    LISA_cluster = ifelse(
+      p_ii < 0.05,
+      as.character(mean), 
+      "Insignificant"),
+    LISA_cluster = factor(
+      LISA_cluster,
+      levels = c("Insignificant", "Low-Low", "Low-High", "High-Low", "High-High")
+    )
+  )
+```
+
+```{r}
+#| warning: false
+
+lisa <- lisa %>%
+  mutate(
+    moran_categorized = case_when(
+      p_ii > 0.05 ~ "Not Significant",
+      ii > 2 ~ "Strong Positive",
+      ii > 1 & ii <= 2 ~ "Moderate Positive",
+      ii > -0.5 & ii <= 1 ~ "Weak/Random", 
+      ii > -1 & ii <= -0.5 ~ "Moderate Negative",
+      ii <= -1 ~ "Strong Negative",
+      TRUE ~ "Not Significant"
+    ),
+    moran_categorized = factor(
+      moran_categorized,
+      levels = c(
+        "Strong Positive",     
+        "Moderate Positive",   
+        "Weak/Random",         
+        "Moderate Negative",   
+        "Strong Negative",     
+        "Not Significant"      
+      )
+    )
+  )
+
+
+ii.map <- tm_shape(lisa) +
+  tm_polygons(
+    fill = "moran_categorized",
+    fill.scale = tm_scale_categorical(
+      values = c(
+        "Strong Positive" = "#b2182b",    # Dark red
+        "Moderate Positive" = "#ef8a62",  # Medium red
+        "Weak/Random" = "#fddbc7",        # Light red/beige
+        "Moderate Negative" = "#67a9cf",  # Medium blue
+        "Strong Negative" = "#2166ac",    # Dark blue
+        "Not Significant" = "grey80"      # Grey
+      )
+    ),
+    fill.legend = tm_legend(
+      title = "Local Moran's I\n(p < 0.05)",
+      position = tm_pos_in("left", "bottom")
+    )
+  ) + 
+  tm_borders(fill_alpha = 0.5) +
+  tm_title("Local Moran's I Values (p < 0.05)")
+
+lisa_map <- tm_shape(lisa) + 
+  tm_polygons(
+    fill = "LISA_cluster",
+    fill.scale = tm_scale_categorical(
+      values = c(
+        "grey80",      # Insignificant
+        "blue",        # Low-Low
+        "lightblue",   # Low-High
+        "pink",        # High-Low
+        "red"          # High-High
+      )
+    ),
+    fill.legend = tm_legend(
+      title = "LISA Cluster",
+      position = tm_pos_in("left", "bottom"))
+  ) +
+  tm_borders() +
+  tm_title("Local Moran's I Clusters (p < 0.05)")
+
+tmap_arrange(ii.map, lisa_map, asp=1, ncol=2)
+```
+
+From local Moran's I values, we can see strong positive autocorrelation in the West, Northeast and East.
+
+We can observe many statistically significant high-high clusters across the map appearing distinctly in the East/Northeast, Central, and isolated pockets in the West.
+
+### 3.4 Computing Local Geary's C
+
+To assess the presence of localised spatial patterns of dissimilarity, we compute Local Geary's C, *Ci*, using the `st_local_geary()` function from the **sfdep** package.
+
+The resulting *Ci* value provides a measure of dissimilarity between a hexagon and its neighbors. Its interpretation is inverse to Local Moran's I:
+
+-   A value of *Ci* close to 0 indicates strong positive autocorrelation (High-High or Low-Low clustering/similarity).
+-   A value of *Ci* close to 2 indicates strong negative autocorrelation (High-Low or Low-High dissimilarity/outliers).
+-   A value near 1 suggests no spatial autocorrelation.
+
+#### 3.4.1 Creating Local Geary's C statistics
+
+First, we apply log transformation to *total_trips* as it is right skewed. 
+
+A right-skewed distribution will affect Geary's C calculation, as very high values will dominate, affecting the squared difference calculation, and local clustering of moderate values may not be detected.
+
+```{r}
+# Create the transformed data if it doesn't exist
+if (!exists("wm_q_transformed")) {
+  wm_q_transformed <- wm_q %>%
+    mutate(log_trips = log(total_trips + 1))
+}
+
+# Use only wm_q and wm_q_transformed for the comparison
+combined_data <- bind_rows(
+  wm_q %>% 
+    select(HEX_ID, total_trips, geometry) %>%
+    mutate(type = "Original", value = total_trips),
+  wm_q_transformed %>% 
+    select(HEX_ID, total_trips, log_trips, geometry) %>%
+    mutate(type = "Log-Transformed", value = log_trips)
+)
+
+ggplot(combined_data, aes(x = value)) +
+  geom_histogram(bins = 30) +
+  facet_wrap(~type, scales = "free") +
+  labs(title = "Distribution Comparison of Total_Trips", x = "Value")
+```
+
+```{r}
+local_geary_results <- wm_q_transformed %>%
+  mutate(
+    local_geary = local_c_perm(
+      x = log_trips,  # Use the transformed variable
+      nb = nb,
+      wt = wt, 
+      nsim = 999 
+    )
+  )
+
+local_geary_data <- local_geary_results %>%
+  select(HEX_ID, total_trips, log_trips, local_geary) %>%  
+  tidyr::unnest(local_geary)
+
+glimpse(local_geary_data)
+```
+
+```{r}
+local_geary_data <- local_geary_data %>%
+  filter(HEX_ID %in% hexagon_trips$HEX_ID)
+
+cat("local_geary_data now has:", nrow(local_geary_data), "hexagons\n")
+```
+
+#### 3.4.2 Visualising Local Geary's C Values and clusters
+
+```{r}
+# Create Geary_Cluster column
+local_geary_data <- local_geary_data %>%
+  mutate(
+    Geary_Cluster = case_when(
+      p_ci >= 0.05 ~ "Insignificant",
+      ci < 1 & cluster == "High-High" ~ "High-High Similarity",
+      ci < 1 & cluster == "Low-Low" ~ "Low-Low Similarity", 
+      ci > 1 & cluster == "High-Low" ~ "High-Low Dissimilarity",
+      ci > 1 & cluster == "Low-High" ~ "Low-High Dissimilarity",
+      TRUE ~ "Insignificant"
+    ),
+    # Convert to factor for consistent ordering
+    Geary_Cluster = factor(
+      Geary_Cluster,
+      levels = c(
+        "High-High Similarity",
+        "Low-Low Similarity",
+        "High-Low Dissimilarity", 
+        "Low-High Dissimilarity",
+        "Insignificant"
+      )
+    ),
+    # Create strength classification for significant values
+    geary_strength = case_when(
+      p_ci >= 0.05 ~ "Not Significant",
+      ci < 0.5 ~ "Strong Positive Similarity",
+      ci >= 0.5 & ci < 1 ~ "Weak Positive Similarity",
+      ci >= 1 & ci < 1.5 ~ "Weak Negative Similarity", 
+      ci >= 1.5 ~ "Strong Negative Similarity",
+      TRUE ~ "Not Significant"
+    ),
+    geary_strength = factor(
+      geary_strength,
+      levels = c(
+        "Strong Positive Similarity",
+        "Weak Positive Similarity",
+        "Weak Negative Similarity",
+        "Strong Negative Similarity",
+        "Not Significant"
+      )
+    )
+  )
+
+# Map 1: Geary's C Strength values
+geary_strength_map <- tm_shape(local_geary_data) +
+  tm_polygons(
+    fill = "geary_strength",
+    fill.scale = tm_scale_categorical(
+      values = c(
+        "Strong Positive Similarity" = "#2166ac",
+        "Weak Positive Similarity" = "#67a9cf",
+        "Weak Negative Similarity" = "#fddbc7", 
+        "Strong Negative Similarity" = "#d6604d",
+        "Not Significant" = "grey80"
+      )
+    ),
+    fill.legend = tm_legend(title = "Geary's C Strength")
+  ) +
+  tm_borders(col = "black", fill_alpha = 0.3) +
+  tm_title("Local Geary's C Strength (p < 0.05)")
+
+# Map 2: Geary Clusters (custom classification)
+geary_clusters_map <- tm_shape(local_geary_data) +
+  tm_polygons(
+    fill = "Geary_Cluster",
+    fill.scale = tm_scale_categorical(
+      values = c(
+        "High-High Similarity" = "lightblue",
+        "Low-Low Similarity" = "pink",  
+        "High-Low Dissimilarity" = "blue",
+        "Low-High Dissimilarity" = "red",
+        "Insignificant" = "grey80"
+      )
+    ),
+    fill.legend = tm_legend(title = "Geary Similarity Clusters")
+  ) +
+  tm_borders(col = "black", fill_alpha = 0.3) +
+  tm_title("Local Geary's C Similarity Patterns")
+
+# Arrange maps side by side
+tmap_arrange(geary_strength_map, geary_clusters_map, 
+             ncol = 2, 
+             heights = c(1, 1))
+```
+
+From the visualisations of Local Geary's C values, we can see that the bus ridership on the West and North exhibits **strong positive similarity** (dark blue shades), where majority of hexagons have *total_trips* similar to their neighbours (i.e. Low-Low or High-High clustering). Whereas in the South and Northeast, there exists some areas of **strong negative similarity** (dark orange shades). 
+
+A closer look at the Geary clusters show that the West and North areas exhibit Low-High dissimilarity (pink shades), which means that there are cold spots in these areas.
+
+### 3.5 Computing Getis-Ord Gi* 
+
+To identify localised spatial clusters of extreme values (hot spots and cold spots), we compute the Getis-Ord Gi* statistic. This is achieved using the `st_local_g()` function from the **sfdep** package. The resulting Gi* value provides a measure of similarity (clustering), specifically comparing a hexagon's value to its neighbours, including itself. 
+
+Its interpretation is as such:
+
+-   A positive and large Gi* value indicates positive autocorrelation (High-High clustering/Hot Spot).
+-   A negative and large Gi* value indicates positive autocorrelation (Low-Low clustering/Cold Spot).
+-   A Gi* value near 0 indicates no spatial autocorrelation; the values are randomly distributed.
+
+We will use the associated p-values and the Z-scores derived from Gi* to generate a final map that visually pinpoints the statistically significant hot spots and cold spots of bus ridership.
+
+#### 3.5.1 Computing distance weight matrix
+
+Getis-Ord Gi* analysis defines neighbours based on distance, and there are 2 types of distance-based proximity matrices that can be utilised:
+
+-   fixed distance weight matrix,
+-   adaptive distance weight matrix
+
+##### 3.5.1.1 Computing adaptive distance weights
+
+For bus ridership analysis in Singapore, fixed distance weights capture **natural variations** where dense hexagons have more neighbouring stops within a fixed radius, smoothing local relationships. 
+
+In contrast, adaptive distance weights ensure consistent analysis by maintaining the same number of neighbors (k-nearest) for each hexagon, providing **uniform spatial context** regardless of urban density, which helps isolate true ridership patterns from structural biases of the transport infrastructure.
+
+Hence, we will use adaptive distance weights for Gi\* analysis.
+
+```{r}
+hexagon_trips_adw <- hexagon_trips %>%
+  mutate(nb = include_self(
+    st_knn(
+      st_geometry(geometry),
+      k = 6)),
+    wt = st_weights(
+      nb, style = "W"),
+    .before = 1)
+```
+
+#### 3.5.2 Computing local Gi\*
+
+Local Gi* is a Getis-Ord statistic that identifies statistically significant hot spots (clusters of high values) and cold spots (clusters of low values) in spatial data. It calculates a Z-score and p-value for each location by comparing local neighborhood sums to the global average, determining whether observed spatial clustering occurs by random chance.
+
+```{r}
+HCSA_adw <- hexagon_trips_adw %>%
+  mutate(
+    gistar = local_gstar_perm(
+      total_trips, nb, wt, nsim = 99),
+    .before = 1) %>%
+  unnest(gistar)
+```
+
+#### 3.5.3 Preparing and Visualising HCSA Map
+
+##### 3.5.3.1  Mapping Gi\* with adaptive distance weights
+
+Thematic mapping functions of tmaps are used to prepare a choropleth map showing the distribution of Gi\* values.
+
+```{r}
+# Create Gi* intervals
+HCSA_adw <- HCSA_adw %>%
+  mutate(
+    gi_strength = case_when(
+      p_value > 0.05 ~ "Not Significant",
+      gi_star >= 3 ~ "Very Strong Hot Spot",
+      gi_star >= 2 & gi_star < 3 ~ "Strong Hot Spot", 
+      gi_star >= 1 & gi_star < 2 ~ "Moderate Hot Spot",
+      gi_star > 0 & gi_star < 1 ~ "Weak Hot Spot",
+      gi_star <= -3 ~ "Very Strong Cold Spot",
+      gi_star <= -2 & gi_star > -3 ~ "Strong Cold Spot",
+      gi_star <= -1 & gi_star > -2 ~ "Moderate Cold Spot",
+      gi_star < 0 & gi_star > -1 ~ "Weak Cold Spot",
+      TRUE ~ "Not Significant"
+    ),
+    # Convert to factor with fixed order
+    gi_strength = factor(
+      gi_strength,
+      levels = c(
+        "Very Strong Hot Spot",
+        "Strong Hot Spot", 
+        "Moderate Hot Spot",
+        "Weak Hot Spot",
+        "Weak Cold Spot",
+        "Moderate Cold Spot",
+        "Strong Cold Spot",
+        "Very Strong Cold Spot",
+        "Not Significant"
+      )
+    )
+  )
+
+# Map with fixed legend order
+tm_shape(HCSA_adw) +
+  tm_polygons(
+    fill = "gi_strength",
+    fill.scale = tm_scale_categorical(
+      values = c(
+        "Very Strong Hot Spot" = "#8B0000",
+        "Strong Hot Spot" = "#FF0000", 
+        "Moderate Hot Spot" = "#FF6B6B",
+        "Weak Hot Spot" = "#FFB6C1",
+        "Very Strong Cold Spot" = "#00008B",
+        "Strong Cold Spot" = "#0000FF",
+        "Moderate Cold Spot" = "#6B8EFF", 
+        "Weak Cold Spot" = "#B6C1FF",
+        "Not Significant" = "grey80"
+      )
+    ),
+    fill.legend = tm_legend(title = "Gi* Cluster Strength")
+  ) +
+  tm_borders(col = "grey", alpha = 0.3) +
+  tm_title("Gi* Hot and Cold Spots by Intensity (p ≤ 0.05)")
+```
+
+From the visualisation map, we can see that there are statistically significant **Very Strong Hot Spots** in the West, North and East areas (Gi\*>0). The Gi\* values show that high bus ridership values in these regions is unlikely to occur by random chance (p < 0.05), representing genuine spatial patterns rather than random distributions.
+
+## 4 Emerging Hot Spot Analysis (EHSA)
+
+**Emerging Hot Spot Analysis (EHSA)** is a spatio-temporal technique that identifies how bus ridership clusters are changing across Singapore's hexagon grid over time. 
+
+The process works by first converting peak ridership data into a space-time cube. For each period, the Getis-Ord Gi\* statistic identifies Hot and Cold Spots. The Mann-Kendall trend test is then applied to the sequence of these Gi\* values for every hexagon to categorise areas of new/growing/persistent hot/cold spots, providing deeper insight for bus demand planning.
+
+### 4.1 Check Trips per Peak Period Dataset
+
+Before creating a Space-Time cube, we will check to ensure every hexagon has data for all time periods and that there are no duplicate location-time combinations.
+
+```{r}
+# See the distribution of time periods per location
+time_counts <- hexagon_trips_peak %>%
+  count(HEX_ID) %>%
+  arrange(n)
+
+cat("Time periods per location:\n")
+print(table(time_counts$n))
+
+# Get the total number of unique time periods
+n_time_periods <- length(unique(hexagon_trips_peak$Peak_Period))
+cat("Total number of time periods:", n_time_periods, "\n")
+
+# See which locations are missing time periods
+locations_with_all_periods <- hexagon_trips_peak %>%
+  count(HEX_ID) %>%
+  filter(n == n_time_periods) %>%
+  pull(HEX_ID)
+
+cat("Locations with all time periods:", length(locations_with_all_periods), "\n")
+cat("Locations missing some time periods:", nrow(time_counts) - length(locations_with_all_periods), "\n")
+```
+
+There are 7 hexagons missing some time periods, hence we will filter to only hexagons with all time periods.
+
+```{r}
+hexagon_trips_peak_filtered <- hexagon_trips_peak %>%
+  filter(HEX_ID %in% locations_with_all_periods)
+```
+
+### 4.1 Creating a Time Series Cube
+
+We use `spacetime()` of **sfdep** package to create an spatio-temporal cube, and verify its object type.
+
+```{r}
+hexagon_trips_peak_st <- sfdep::as_spacetime(
+  hexagon_trips_peak_filtered,
+  "HEX_ID", 
+  "Peak_Period"
+)
+
+is_spacetime_cube(hexagon_trips_peak_st)
+cat("Balanced spacetime cube with", nrow(hexagon_trips_peak_st), "rows\n")
+```
+
+### 4.2 
+
+```{r}
+head(hexagon_trips_peak)
 ```
 
 ```{r}
@@ -355,62 +1240,7 @@ tmap_arrange(equal,
 ```{r}
 ```
 
-```{r}
-```
 
-```{r}
-```
-
-```{r}
-```
-
-```{r}
-```
-
-```{r}
-```
-
-```{r}
-```
-
-```{r}
-```
-
-```{r}
-```
-
-```{r}
-```
-
-```{r}
-```
-
-```{r}
-```
-
-```{r}
-```
-
-```{r}
-```
-
-```{r}
-```
-
-```{r}
-```
-
-```{r}
-```
-
-```{r}
-```
-
-```{r}
-```
-
-```{r}
-```
 
 ```{r}
 ```
