@@ -1,0 +1,157 @@
+---
+title: "8: Data Preparation for Take-home Exercise 3"
+author: "Emma Chew En Chin"
+date: "Oct 25, 2025"
+date-modified: "last-modified"
+format: html
+execute: 
+  echo: true
+  eval: true
+  warning: false
+  freeze: true
+---
+
+## 1 Installing and Loading R packages
+
+-   `httr`: Used for url call from OneMap
+-   `jsonlite`: To pass the data back into tibble data format
+-   `progress`: A package to track the progress of the code execution
+
+```{r}
+pacman::p_load(httr, tidyverse, sf, tmap, jsonlite, progress)
+```
+
+## 2 Geocoding HDB resale data
+
+We can reverse geocode the HDB postal code, as there is only blk number and street name in the Resale Flats dataset.
+
+This is the documentation: [OneMap Reverse Geocoding](https://www.onemap.gov.sg/apidocs/reverseGeocode)
+
+```{r}
+HDBresale <-read_csv("data/rawdata/HDBresale.csv") %>%
+  filter(flat_type == "4 ROOM") %>%
+  filter(month >= "2025-09" & month < "2025-10")
+```
+
+Changing ST to SAINT so that it does not look like 'Street'.
+
+```{r}
+HDBresale$street_name <- gsub(
+  "ST\\.", "SAINT",
+  HDBresale$street_name)
+```
+
+```{r}
+geocode <- function(block, streetname) {
+  base_url <- "https://onemap.gov.sg/api/common/elastic/search"
+  address <- paste(block, streetname, sep = " ")
+  query <- list("searchVal" = address,
+                "returnGeom" = "Y",
+                "getAddrDetails" = "N",
+                "pageNum" = "1")
+  
+  res <-GET(base_url, query = query)
+  restext <- content(res, as="text")
+  
+  output <- fromJSON(restext) %>%
+    as.data.frame %>%z
+    select(results.LATITUDE, results.LONGITUDE)
+  
+  return(output)
+}
+```
+
+```{r}
+HDBresale$LATITUDE <- 0
+HDBresale$LONGITUDE <- 0
+
+for (i in 1:nrow(HDBresale)){
+  temp_output <- geocode(HDBresale[i, 4], HDBresale[i, 5])
+  
+  HDBresale$LATITUDE[i] <- temp_output$results.LATITUDE
+  HDBresale$LONGITUDE[i] <- temp_output$results.LONGITUDE
+}
+```
+
+```{r}
+glimpse(HDBresale)
+```
+
+Since HDBresale contains LATITUDE and LONGITUDE columns (which are in the WGS 84 geographic coordinate system, or EPSG:4326), we need to convert it into an sf (Simple Features) object and then transform it to the SVY21 (Singapore Projected Coordinate System, EPSG:3414).
+
+```{r}
+HDBresale_sf <- HDBresale %>%
+  st_as_sf(
+    coords = c("LONGITUDE", "LATITUDE"),
+    crs=4326) %>%
+  st_transform(crs = 3414)
+```
+
+```{r}
+preschool = st_read("data/rawdata/PreSchoolsLocation.kml") %>% st_transform(crs=3414)
+```
+
+`mutate()` creates a new variable of the number of primary schools within a distance of 350m of the resale flat.
+
+```{r}
+within_350m <- st_is_within_distance(
+  HDBresale_sf, preschool, dist = 350)
+
+HDBresale_sf <- HDBresale_sf %>%
+  mutate(prischool_350m = map_int(within_350m, length))
+```
+
+## 3 Preparing data for modelling
+
+### 3.1 Installing and Loading R packages
+
+```{r}
+pacman::p_load(sf, spdep, GWmodel, SpatialML, 
+               tmap, rsample, Metrics, tidyverse,
+               knitr, kableExtra, spatialRF,
+               randomForestExplainer)
+```
+
+### 3.2 Data Preparation
+
+```{r}
+mdata <- read_rds("data/rawdata/mdata.rds")
+```
+
+### 3.3 Data Sampling
+
+We will select a 10% sample at random from the data, to test as a quick prototype, as calibrating predictive models are computationally expensive.
+
+```{r}
+set.seed(1234)
+HDB_sample <- mdata %>%
+  sample_n(1500)
+```
+
+### 3.4 Checking of overlapping point
+
+When using GWmodel to calibrate explanatory or predictive modesl, it is very important to ensure that there are no overlapping point features.
+
+```{r}
+overlapping_points <- HDB_sample %>%
+  mutate(overlap = lengths(st_equals(., .)) > 1)
+```
+
+### 3.5 Spatial Jitter
+
+Using `jitter()` to move point features away from each other by 1m to avoid overlapping points.
+
+```{r}
+HDB_sample <- HDB_sample %>%
+  st_jitter(amount = 1)
+```
+
+### 3.6 Data Sampling
+
+```{r}
+set.seed(1234)
+resale_split <- initial_split(HDB_sample, 
+                              prop = 6.67/10)
+train_data <- training(resale_split)
+test_data <- testing(resale_split)
+```
