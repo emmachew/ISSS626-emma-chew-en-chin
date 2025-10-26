@@ -70,7 +70,7 @@ mdata <- read_rds("data/rawdata/mdata.rds")
 
 ### 4.2 Data Sampling
 
-The entire data is split into training and test data sets, 65% and 35% respectively, by using `initial_split()` of **rsample** package. 
+The entire data is split into training and test data sets, 65% and 35% respectively, by using `initial_split()` of **rsample** package.
 
 **rsample** is one of the package of tidymodels.
 
@@ -125,11 +125,12 @@ price_mlr <- lm(resale_price ~ floor_area_sqm +
                 data=train_data)
 summary(price_mlr)
 ```
+
 The adjusted R-squared of the model is 0.737, indicating that 73.73% of the variability in the resale price can be explained by the independent variables in the model.
 
-The Residual Standard Error (RSE) is 61,650, which suggests that the typical or average difference between the model's predicted resale price and the actual resale price is approximately $61,650.
+The Residual Standard Error (RSE) is 61,650, which suggests that the typical or average difference between the model's predicted resale price and the actual resale price is approximately \$61,650.
 
-The p-value is < 0.05, indicating that the model is statistically significant, meaning the predictors collectively contribute significantly to predicting the resale price.
+The p-value is \< 0.05, indicating that the model is statistically significant, meaning the predictors collectively contribute significantly to predicting the resale price.
 
 ```{r}
 write_rds(price_mlr, "data/model/price_mlr.rds" ) 
@@ -320,6 +321,8 @@ We will calibrate a model to predict HDB resale price by using `grf()` of **Spat
 ### 9.1 Calibrating using training data
 
 ```{r}
+#| eval: FALSE
+
 set.seed(1234)
 gwRF_adaptive <- grf(
   formula = resale_price ~ floor_area_sqm +
@@ -333,7 +336,10 @@ gwRF_adaptive <- grf(
   dframe=train_data_nogeom, 
   bw=40,
   kernel="adaptive",
-  coords=coords_train)
+  coords = coords_train,
+  ntree = 50,  # Reduce number of trees
+  mtry = 4,     # Set mtry parameter
+  importance = "impurity")
 
 write_rds(gwRF_adaptive, "data/model/gwRF_adaptive.rds")
 ```
@@ -357,6 +363,8 @@ test_data_nogeom <- cbind(
 #### 9.2.2 Predicting with test data
 
 ```{r}
+#| eval: FALSE
+
 gwRF_pred <- predict.grf(gwRF_adaptive, 
                            test_data_nogeom, 
                            x.var.name="X",
