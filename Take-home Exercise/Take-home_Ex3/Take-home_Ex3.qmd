@@ -1,0 +1,12 @@
+---
+title: "3: Modelling HDB Resale Prices with Geographically Weighted Methods"
+author: "Emma Chew En Chin"
+date: "Oct 26, 2025"
+date-modified: "last-modified"
+format: html
+execute: 
+  echo: true
+  eval: true
+  warning: false
+  freeze: true
+---
