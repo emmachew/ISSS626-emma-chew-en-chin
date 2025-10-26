@@ -4,15 +4,12 @@
 .httr-oauth
 .DS_Store
 .quarto
-
 /.quarto/
 data/
-
 # Ignore all zip files
 *.zip
-
 # Ignore all csv files
 *.csv
-
 # Ignore all tmp files
 *.tmp
+.RDataTmp3
