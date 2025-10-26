@@ -54,7 +54,7 @@ geocode <- function(block, streetname) {
   restext <- content(res, as="text")
   
   output <- fromJSON(restext) %>%
-    as.data.frame %>%z
+    as.data.frame %>%
     select(results.LATITUDE, results.LONGITUDE)
   
   return(output)
