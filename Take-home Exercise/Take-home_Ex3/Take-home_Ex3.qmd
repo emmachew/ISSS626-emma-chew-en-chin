@@ -49,42 +49,35 @@ pacman::p_load(httr, sf, tmap, jsonlite, progress,
 
 -   Transport Factors:
 
-    -   *MRT* data is a list of MRT/LRT stations in Singapore with the station names and codes. It is in shapefile format.
-    -   *Bus stops* data is a list of bus stops in Singapore. It is in shapefile format.
+    -   *MRT* data is a list of MRT/LRT stations in Singapore with the station names and codes. It is in geojson format.
+    -   *Bus stops* data is a list of bus stops in Singapore. It is in geojson format.
 
--   Child-related Factors:
+-   Education Factors:
 
-    -   *Kindergartens* data is a list of kindergartens in Singapore. It is in geojson format.
-
+    -   *Preschool* data is a list of preschools in Singapore. It is in geojson format.
     -   *Childcare service* data is a list of childcare services in Singapore. It is in geojson format.
+    -   *School* data is a list of primary, secondary, junior colleges schools in Singapore. It is in csv format.
 
-    -   *Primary School* data is a list of primary schools in Singapore. It is in geojson format.
+-   Elderly-care Factors:
 
-    -   *Secondary School* data is a list of secondary schools in Singapore. It is in geojson format.
-
--   Elderly-related Factors:
-
-    -   *Eldercare* data is a list of eldercare in Singapore. It is in shapefile format.
+    -   *Eldercare* data is a list of eldercare in Singapore. It is in geojson format.
 
 -   Recreational Factors
 
     -   *Parks* data is a list of parks in Singapore. It is in geojson format.
-
-    -   Community Centres
-
-    -   Shopping Malls
+    -   *Community clubs* data is a list of community clubs in Singapore. It is in geojson format.
+    -   *Community clubs* data is a list of community clubs in Singapore. It is in geojson format.
+    -   *Sports Facilities* data is a list of public sports facilities in Singapore. It is in geojson format.
+    -   *GymsSG* data is a list of public gym facilities in Singapore. It is in geojson format.
 
 -   Food Factors
 
     -   *Hawker Centre* data is a list of hawker centres in Singapore. It is in geojson format.
-
     -   *Supermarket* data is a list of supermarkets in Singapore. It is in geojson format.
 
 -   Healthcare Factors
 
     -   *CHAS clinics* data is a list of CHAS clinics in Singapore. It is in geojson format.
-
-Transport: MRT/LRT stations, Bus Interchanges Amenities: Primary, secondary schools, Shopping Malls, Supermarkets, Hawker Centres, Parks, Community Centres, Healthcare facilities (polyclinics, hospitals) Dist to CBD (eg.dist to Raffles Place)
 
 ### 3.2 Cleaning HDB Resale Data
 
@@ -159,4 +152,15 @@ HDBresale_sf <- HDBresale %>%
   st_transform(crs = 3414)
 
 saveRDS(HDBresale_sf, file = "data/rds/HDBresale_sf.rds")
+```
+
+### 3.3 Cleaning Schools Data
+
+```{r}
+folder_path <- "data/aspatial/acra"
+file_list <- list.files(path = folder_path,
+                        pattern = "^ACRA*.*\\.csv$", 
+                        full.names = TRUE)
+acra_data <- file_list %>%
+    map_dfr(read_csv, show_col_types = FALSE)
 ```
