@@ -13,3 +13,4 @@ data/
 # Ignore all tmp files
 *.tmp
 .RDataTmp3
+_freeze/Take-home Exercise/Take-home_Ex3/Take-home_Ex3/execute-results/html.json
