@@ -48,8 +48,7 @@ All the values of the cost related fields are in **metres**.
 
 ## 3 Installing R packages
 
-Packages used:
--   `spatialAcc`: This is used to model geographical accessibility
+Packages used: - `spatialAcc`: This is used to model geographical accessibility
 
 ```{r}
 pacman::p_load(tmap, SpatialAcc, sf, 
@@ -90,6 +89,7 @@ After the transformation, we will verify the projection of the newly transformed
 ```{r}
 st_crs(mpsz)
 ```
+
 EPSG has become 3414 now.
 
 ### 4.3 Cleaning and updating attribute fields of the geospatial data
