@@ -1330,3 +1330,172 @@ cat("GWRF Training data dimensions:", dim(train_gwrf), "\n")
 cat("GWRF Test data dimensions:", dim(test_gwrf), "\n")
 ```
 
+### 10.2 Constructing the GWRF Model
+
+We used the same bandwidth (74 neighbors) for both GWR and GWRF to ensure fair comparison, isolating the effect of the modeling approach from spatial scale selection.
+
+```{r}
+#| eval: false
+
+predictors <- names(train_data_filtered)
+predictors <- predictors[!predictors %in% c("log_resale_price", "geometry")]
+
+gwr_formula_gwrf <- as.formula(paste("log_resale_price ~", paste(names(train_gwrf)[-1], collapse = " + ")))
+
+set.seed(42) 
+gwRF_adaptive <- grf(
+  formula = gwr_formula_gwrf,
+  dframe = train_gwrf,
+  bw = 74, 
+  kernel = "adaptive",
+  coords = coords_train,
+  ntree = 50,
+  mtry = 4,
+  importance = "impurity"
+)
+
+write_rds(gwRF_adaptive, "data/model/gwRF_adaptive.rds")
+```
+
+```{r}
+gwRF_adaptive <- read_rds("data/model/gwRF_adaptive.rds")
+
+gwRF_adaptive
+```
+
+### 10.3 Computing Predicted Values of the Test Data
+
+We use the trained GWRF model to predict values for the unseen test data. Note that predict.grf requires the coordinate column names to be explicitly passed as X and Y.
+
+```{r}
+#| eval: FALSE
+
+# Combine test data with coordinates into one object, ensuring X and Y names
+test_gwrf_pred_input <- test_gwrf
+test_gwrf_pred_input$X <- coords_test[, 1]
+test_gwrf_pred_input$Y <- coords_test[, 2]
+
+gwRF_pred <- predict.grf(
+  gwRF_adaptive,
+  new.data = test_gwrf_pred_input,
+  x.var.name = "X",
+  y.var.name = "Y",
+  local.w = 1, # Use full local weighting
+  global.w = 0 # Use no global weighting
+)
+
+if(is.list(gwRF_pred) && "predictions" %in% names(gwRF_pred)) {
+  gwRF_pred_values <- gwRF_pred$predictions
+} else if(is.numeric(gwRF_pred)) {
+  gwRF_pred_values <- gwRF_pred
+} else {
+  # If structure is unknown, try to extract the first element
+  gwRF_pred_values <- unlist(gwRF_pred)[[1]]
+}
+
+write_rds(gwRF_pred, "data/model/gwRF_pred.rds")
+```
+
+```{r}
+gwRF_pred <- read_rds("data/model/gwRF_pred.rds")
+
+gwRF_pred
+```
+
+## 11 Model Comparison and Evaluation
+
+First, we save the actual test values from *test_data_filtered*.
+
+```{r}
+test_actual_values <- test_data_filtered$log_resale_price
+write_rds(test_actual_values, "data/model/test_actual_values.rds")
+
+cat("Number of test observations:", length(test_actual_values), "\n")
+```
+
+Then, we load the GWR, RF and GWRF model predictions.
+
+```{r}
+test_rf <- read_rds("data/model/test_actual_values.rds") 
+gwr_pred <- read_rds("data/model/gwr_pred.rds") # GWR output
+rf_pred <- read_rds("data/model/rf_pred.rds") # RF output
+gwRF_pred <- read_rds("data/model/gwRF_pred.rds") # GWRF output
+
+# Extract GWR predictions (assuming the column is named 'Pred')
+gwr_log_pred <- gwr_pred$SDF$prediction
+
+# Create the enhanced comparison data frame
+comparison_df <- data.frame(
+  log_actual = test_rf,
+  log_pred_gwr = gwr_log_pred,
+  log_pred_rf = rf_pred,
+  log_pred_gwrf = gwRF_pred
+)
+
+# Calculate Residuals (Error = Actual - Predicted)
+comparison_df <- comparison_df %>%
+  mutate(
+    residual_gwr = log_actual - log_pred_gwr,
+    residual_rf = log_actual - log_pred_rf,
+    residual_gwrf = log_actual - log_pred_gwrf
+  )
+  
+# Display the first few rows of the detailed comparison
+print("--- Detailed Comparison (Log Scale) ---")
+head(comparison_df)
+
+# Calculate RMSE for each model in log space
+rmse_gwr_log <- rmse(comparison_df$log_actual, comparison_df$log_pred_gwr)
+rmse_rf_log <- rmse(comparison_df$log_actual, comparison_df$log_pred_rf)
+rmse_gwrf_log <- rmse(comparison_df$log_actual, comparison_df$log_pred_gwrf)
+
+# Compile Log Results
+log_results <- data.frame(
+  Model = c("GWR (Log)", "RF (Log)", "GWRF (Log)"),
+  RMSE_Log_Scale = c(rmse_gwr_log, rmse_rf_log, rmse_gwrf_log)
+)
+```
+
+We then apply exponentiation to the the predictions back to the original price scale so that we can have a clear overview of how each model affects price predictions.
+
+```{r}
+comparison_df <- comparison_df %>%
+  mutate(
+    actual_price = exp(log_actual),
+    pred_price_gwr = exp(log_pred_gwr),
+    pred_price_rf = exp(log_pred_rf),
+    pred_price_gwrf = exp(log_pred_gwrf)
+  )
+
+# Calculate RMSE for each model in original price space
+rmse_gwr_orig <- rmse(comparison_df$actual_price, comparison_df$pred_price_gwr)
+rmse_rf_orig <- rmse(comparison_df$actual_price, comparison_df$pred_price_rf)
+rmse_gwrf_orig <- rmse(comparison_df$actual_price, comparison_df$pred_price_gwrf)
+
+# Compile Results
+orig_results <- data.frame(
+  Model = c("GWR (Original)", "RF (Original)", "GWRF (Original)"),
+  RMSE_Original_Scale = c(rmse_gwr_orig, rmse_rf_orig, rmse_gwrf_orig)
+)
+```
+
+```{r}
+final_comparison <- bind_rows(log_results, orig_results) 
+print(final_comparison)
+```
+
+The **non-spatial Random Forest (RF)** model demonstrated superior performance by a significant margin on both scales.
+
+The **RF model** yielded an average prediction error of approximately \$44,406.53. This low error magnitude suggests that non-linear relationships and high-order interactions among the standardised features are more influential in predicting resale price than spatial heterogeneity.
+
+The **GWR model** is the weakest model, despite its ability to account for spatial heterogeneity, with a substantial average error of \$286,790.95. This indicates that the fundamental assumption of local linearity required by GWR is likely violated across much of the study area, leading to unstable and poor predictions when back-transformed to the original price scale.
+
+The **GWRF model**, a hybrid approach, was the second-best performer, with an average error of \$148,454.52. While better than GWR, its significant underperformance relative to the standard global RF suggests that the hyperparameter settings (such as the fixed bandwidth of 74) used, introduced inefficiency or instability, outweighing the benefit of localised modeling.
+
+## 12 Conclusion and Next Steps
+
+Based on the model evaluation, the **Random Forest (RF) model** is the most robust and accurate predictor for HDB resale prices among the models tested. For prediction purposes, this model should be adopted due to its superior performance, achieving the lowest RMSE of $44,406 on the original price scale. The RF model's RMSE represents approximately 8-12% of typical 4-room HDB prices, indicating strong practical utility for home buyers and valuation purposes.
+
+As this study compares model performance using standard hyperparameter tuning with adaptive bandwidth, further investigation into **GWRF's optimal bandwidth** and tuning parameters (mtry, ntree) is warranted to understand why this hybrid method failed to outperform the global RF model, particularly given the spatial autocorrelation present in the residuals.
+
+In the meantime, further optimisation of the RF model using spatial cross-validation techniques (e.g., spatial block cross-validation) should be conducted to confirm the model's stability across different geographic regions and potentially reduce its RMSE further.
